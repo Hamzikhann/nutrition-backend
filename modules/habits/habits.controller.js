@@ -55,8 +55,8 @@ exports.list = async (req, res) => {
 		} else {
 			whereClause = {
 				isActive: "Y",
-				id: 1,
-				userId: userId
+
+				userId: [1, userId]
 			};
 		}
 
