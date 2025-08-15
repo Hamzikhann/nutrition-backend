@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Courses Information</title>
+  </head>
+
+  <body>
+    <h2>Courses Information</h2>
+
+    {{#each managers}}
+    <h3>Hi {{manager.firstName}} {{manager.lastName}} </h3>
+    <p>We would like to inform you that the following employees have not completed their assigned courses:
+
+    <table border="1">
+      <thead>
+        <tr>
+          <th>Course ID</th>
+          <th>Course Title</th>
+          <th>Completion Date One</th>
+          <th>Completion Date Two</th>
+          <th>Enrolled Users</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each courses}}
+        {{#if this}}
+        {{#if this.course}}
+        <tr>
+          <td>{{this.course.id}}</td>
+          <td>{{this.course.title}}</td>
+          <td>{{this.course.completionDateOne}}</td>
+          <td>{{this.course.completionDateTwo}}</td>
+          <td>
+            <ul>
+              {{#each this.enrolledUsers}}
+              <li>
+                {{this.firstName}} {{this.lastName}} - {{this.email}}
+                (Manager: {{this.manager.firstName}} {{this.manager.lastName}} - {{this.manager.email}})
+              </li>
+              {{/each}}
+            </ul>
+          </td>
+        </tr>
+        {{/if}}
+        {{/if}}
+        {{/each}}
+      </tbody>
+    </table>
+    {{/each}}
+    <hr>
+    <p>Please ensure that the employees complete their courses as soon as possible. If you have any questions or need
+      assistance, feel free to reach out.</p>
+    <p>Best regards,</p>
+
+
+
+  </body>
+
+</html>

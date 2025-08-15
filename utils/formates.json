@@ -1,0 +1,50 @@
+{
+	"formats": [
+		{
+			"id": "stansted_meet_greet",
+			"name": "Stansted Meet & Greet",
+			"identifiers": ["Product Code", "Booking Ref"],
+			"mappings": {
+				"booking.reference": "Booking Ref",
+				"booking.startDate": "Entry Date Time|split:\n|0",
+				"booking.startTime": "Entry Date Time|split:\n|1",
+				"booking.endDate": "Return Date Time|split:\n|0",
+				"booking.endTime": "Return Date Time|split:\n|1",
+				"customer.firstName": "Customer|split:\n|0|split: |0",
+				"customer.lastName": "Customer|split:\n|0|split: |1:-1",
+				"customer.phone": "Customer|split:\n|1",
+				"vehicle.make": "Vehicle Make/Reg|split:\n|0",
+				"vehicle.model": "Vehicle Make/Reg|split:\n|1",
+				"vehicle.color": "Vehicle Make/Reg|split:\n|2",
+				"vehicle.registration": "Vehicle Make/Reg|split:\n|3",
+				"flight.outboundNumber": "Out Flight Number",
+				"flight.inboundNumber": "In Flight Number",
+				"airport.code": "Airport and Terminal|split:-|0",
+				"payment.amount": "Price"
+			}
+		},
+		{
+			"id": "cpd_format",
+			"name": "CPD Booking Format",
+			"identifiers": ["Reference Number", "Customer Name"],
+			"mappings": {
+				"booking.reference": "Reference Number",
+				"booking.startDate": "Departure Date/Time|split: |0",
+				"booking.startTime": "Departure Date/Time|split: |1",
+				"booking.endDate": "Arrival Date/Time|split: |0",
+				"booking.endTime": "Arrival Date/Time|split: |1",
+				"customer.firstName": "Customer Name|split: |0",
+				"customer.lastName": "Customer Name|split: |1:-1",
+				"customer.phone": "Mobile",
+				"vehicle.registration": "Regno",
+				"vehicle.make": "Make",
+				"vehicle.model": "Model",
+				"vehicle.color": "Color",
+				"flight.outboundNumber": "Departure Flight No",
+				"flight.inboundNumber": "Return Flight No",
+				"airport.code": "Airport Name",
+				"payment.amount": "Amount Price"
+			}
+		}
+	]
+}

@@ -1,0 +1,41 @@
+<html>
+
+  <head>
+    <title>{{courses.title}} - Course Information</title>
+  </head>
+
+  <body>
+    <h2>{{courses.title}} - Course Information</h2>
+    <p>Completion Date: {{courses.completionDateOne}} to {{courses.completionDateTwo}}</p>
+    <p>We would like to inform you that the following employees have not completed their assigned courses:
+
+    </p>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>Sr No</th>
+          <th>User Name</th>
+          <th>Email</th>
+          <th>Progress</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each enrolledUsers}}
+        <tr>
+          <td>{{@index}}</td>
+          <td>{{firstName}} {{lastName}}</td>
+          <td>{{email}}</td>
+          <td>{{progress}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <hr>
+    <p>Please ensure that the employees complete their courses as soon as possible. If you have any questions or need
+      assistance, feel free to reach out.</p>
+    <p>Best regards,</p>
+
+  </body>
+
+</html>
