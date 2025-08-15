@@ -58,8 +58,8 @@ exports.create = async (req, res) => {
 				...highlight.get({ plain: true }),
 				items: [
 					{
-						...highlightItem.get({ plain: true }),
-						mediaUrl: getFileUrl(s3Key)
+						...highlightItem.get({ plain: true })
+						// mediaUrl: getFileUrl(s3Key)
 					}
 				]
 			};
