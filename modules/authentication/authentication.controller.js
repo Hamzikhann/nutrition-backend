@@ -418,7 +418,7 @@ exports.verifyOtp = async (req, res) => {
 				isActive: "N",
 				roleId: 2 // Default role for new users
 			});
-
+			encryptHelper(createdUser);
 			return res.status(200).send({
 				message: "OTP verified successfully. Account pending activation.",
 				data: createdUser
