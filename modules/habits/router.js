@@ -3,8 +3,10 @@ const express = require("express");
 const router = express.Router();
 const habitsController = require("./habits.controller");
 const jwt = require("../../utils/jwt");
+const fileUpload = require("../../utils/fileUpload");
+const { upload } = fileUpload("habits");
 
-router.post("/create", async (req, res) => {
+router.post("/create", upload.single("image"), async (req, res) => {
 	await habitsController.create(req, res);
 });
 router.post("/list", async (req, res) => {

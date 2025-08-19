@@ -25,7 +25,10 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: false
 			},
-
+			image: {
+				type: DataTypes.STRING,
+				allowNull: true
+			},
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,
@@ -37,6 +40,7 @@ module.exports = (sequelize, DataTypes) => {
 	table.associate = function (models) {
 		// table.hasMany(models.userHabits);
 		table.belongsTo(models.users);
+		table.hasMany(models.habitsCompletions);
 	};
 	return table;
 };

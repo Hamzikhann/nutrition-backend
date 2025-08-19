@@ -378,7 +378,7 @@ exports.verifyOtp = async (req, res) => {
 
 		// Check if user exists (with proper include syntax)
 		const user = await Users.findOne({
-			where: { email },
+			where: { email, phoneNo },
 			include: [
 				{
 					model: Roles, // Make sure this matches your model name exactly

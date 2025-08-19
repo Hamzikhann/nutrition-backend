@@ -2,17 +2,16 @@
 
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"ingredients",
+		"assignedIngredients",
 		{
 			name: DataTypes.STRING,
 			quantity: DataTypes.STRING
 		},
 		{ timestamps: true }
 	);
-
-	table.associate = function (models) {
-		table.hasMany(models.assignedIngredients);
+	table.associate = (models) => {
+		table.belongsTo(models.dishes);
+		table.belongsTo(models.ingredients);
 	};
-
 	return table;
 };

@@ -6,6 +6,7 @@ const rolesRouteHandler = require("../modules/roles/router");
 const usersRouteHandler = require("../modules/users/router");
 const habitsRouteHandler = require("../modules/habits/router");
 const highlightsRouteHandler = require("../modules/highlights/router");
+const dishesRouteHandler = require("../modules/dishes/router");
 
 class Routes {
 	constructor(app) {
@@ -17,6 +18,7 @@ class Routes {
 		this.app.use("/api/users", jwt.protect, usersRouteHandler);
 		this.app.use("/api/habits", jwt.protect, habitsRouteHandler);
 		this.app.use("/api/highlights", jwt.protect, highlightsRouteHandler);
+		this.app.use("/api/dishes", jwt.protect, dishesRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();

@@ -2,18 +2,21 @@
 
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"userPrograms",
+		"habitsCompletions",
 		{
-			startDate: DataTypes.DATE,
-			endDate: DataTypes.DATE
+			status: DataTypes.STRING,
+
+			isActive: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);
-
 	table.associate = function (models) {
+		table.belongsTo(models.habits);
 		table.belongsTo(models.users);
-		table.belongsTo(models.programs);
 	};
-
 	return table;
 };

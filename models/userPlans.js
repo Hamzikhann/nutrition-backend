@@ -1,18 +1,19 @@
 "use strict";
-
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"ingredients",
+		"userPlans",
 		{
-			name: DataTypes.STRING,
-			quantity: DataTypes.STRING
+			isActive: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);
-
 	table.associate = function (models) {
-		table.hasMany(models.assignedIngredients);
+		table.belongsTo(models.plans);
+		table.belongsTo(models.users);
 	};
-
 	return table;
 };
