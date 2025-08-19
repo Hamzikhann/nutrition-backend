@@ -21,16 +21,15 @@ exports.login = async (req, res) => {
 	try {
 		const userExist = await Users.findOne({
 			where: {
-				email: req.body.email.trim(),
+				id: crypto.decrypt(req.body.userId),
 				isActive: "Y"
 			},
-			attributes: ["email"],
 			raw: true
 		});
 		if (userExist) {
 			const user = await Users.findOne({
 				where: {
-					email: req.body.email.trim(),
+					id: req.body.userId,
 					// password: req.body.password,
 					isActive: "Y"
 				},
@@ -413,7 +412,7 @@ exports.verifyOtp = async (req, res) => {
 			}
 		} else {
 			// Create new user if doesn't exist
-			await Users.create({
+			let createdUser = await Users.create({
 				email,
 				phoneNo,
 				isActive: "N",
@@ -421,7 +420,8 @@ exports.verifyOtp = async (req, res) => {
 			});
 
 			return res.status(200).send({
-				message: "OTP verified successfully. Account pending activation."
+				message: "OTP verified successfully. Account pending activation.",
+				data: createdUser
 			});
 		}
 	} catch (err) {
