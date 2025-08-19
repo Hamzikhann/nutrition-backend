@@ -29,7 +29,7 @@ exports.login = async (req, res) => {
 		if (userExist) {
 			const user = await Users.findOne({
 				where: {
-					id: req.body.userId,
+					id: crypto.decrypt(req.body.userId),
 					// password: req.body.password,
 					isActive: "Y"
 				},
