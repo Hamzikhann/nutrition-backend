@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
 		table.hasMany(models.highlights);
 		table.hasMany(models.highlightViews);
 		table.hasOne(models.userAssesmentForm);
-		table.hasOne(models.userPlans);
+		table.hasMany(models.userPlans);
 		table.hasMany(models.habitsCompletions);
 	};
 	return table;

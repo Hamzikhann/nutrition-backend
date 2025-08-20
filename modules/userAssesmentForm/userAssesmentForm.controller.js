@@ -7,9 +7,6 @@ const sequelize = db.sequelize; // ADD THIS LINE
 
 const UserAssesmentForm = db.userAssesmentForm;
 const UserAssesmentFormFiles = db.userAssesmentFormFiles;
-const Payment = db.payments;
-const User = db.users;
-const UserPlans = db.userPlans;
 
 exports.create = async (req, res) => {
 	const t = await sequelize.transaction();
@@ -37,12 +34,7 @@ exports.create = async (req, res) => {
 			lunchOptions: joi.string().required(),
 			dinnerOptions: joi.string().required(),
 			snacksOptions: joi.string().required(),
-			meals: joi.string().required(),
-			planId: joi.string().required(),
-			amount: joi.string().required(),
-			paymentMethod: joi.string().required(),
-			currency: joi.string().required(),
-			paymentIntentId: joi.string().required()
+			meals: joi.string().required()
 		});
 
 		const { error } = schema.validate(req.body);
@@ -51,7 +43,6 @@ exports.create = async (req, res) => {
 		}
 
 		const userId = crypto.decrypt(req.body.userId);
-		console.log(req.body);
 		// Create form payload
 		const formPayload = {
 			name: req.body.name ? req.body.name : "",
@@ -76,26 +67,9 @@ exports.create = async (req, res) => {
 			dinnerOptions: req.body.dinnerOptions ? req.body.dinnerOptions : "",
 			snacksOptions: req.body.snacksOptions ? req.body.snacksOptions : "",
 			meals: req.body.meals ? req.body.meals : "",
-			planId: req.body.planId ? crypto.decrypt(req.body.planId) : "",
 
-			userId,
-			paymentId: null // Will be updated after payment creation
+			userId
 		};
-
-		// Create payment
-		const paymentPayload = {
-			amount: req.body.amount,
-			currency: req.body.currency,
-			paymentMethod: req.body.paymentMethod,
-			status: "pending",
-			paymentIntentId: req.body.paymentIntentId,
-			userId: userId
-		};
-
-		const paymentData = await Payment.create(paymentPayload, { transaction: t });
-
-		// Update form payload with payment ID
-		formPayload.paymentId = paymentData.id;
 
 		// Create main form
 		const userAssessmentFormData = await UserAssesmentForm.create(formPayload, { transaction: t });
@@ -116,37 +90,6 @@ exports.create = async (req, res) => {
 					{ transaction: t }
 				);
 			}
-		}
-
-		// Handle payment screenshot
-		if (req.files && req.files["image"] && Array.isArray(req.files["image"])) {
-			const paymentFile = req.files["image"][0]; // Get first payment screenshot
-			const s3Key = await uploadFileToS3(paymentFile, `userAssesmentForm/${userId}/payment`);
-
-			await UserAssesmentFormFiles.create(
-				{
-					userId,
-					userAssesmentFormId: userAssessmentFormData.id,
-					fileName: paymentFile.originalname,
-					fileType: paymentFile.mimetype,
-					filePath: s3Key
-				},
-				{ transaction: t }
-			);
-
-			await User.update({ isPaid: "Y" }, { where: { id: userId }, transaction: t });
-
-			await UserPlans.create(
-				{
-					userId: userId,
-					planId: req.body.planId ? crypto.decrypt(req.body.planId) : "",
-					isActive: "Y"
-				},
-				{ transaction: t }
-			);
-
-			// Also update payment record with screenshot reference if needed
-			await Payment.update({ image: s3Key }, { where: { id: paymentData.id }, transaction: t });
 		}
 
 		await t.commit();

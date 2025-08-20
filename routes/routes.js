@@ -9,6 +9,7 @@ const highlightsRouteHandler = require("../modules/highlights/router");
 const dishesRouteHandler = require("../modules/dishes/router");
 const userAssesmentFormRouter = require("../modules/userAssesmentForm/router");
 const plansRouteHandler = require("../modules/plans/router");
+const paymentsRouteHandler = require("../modules/payments/router");
 
 class Routes {
 	constructor(app) {
@@ -21,8 +22,9 @@ class Routes {
 		this.app.use("/api/habits", jwt.protect, habitsRouteHandler);
 		this.app.use("/api/highlights", jwt.protect, highlightsRouteHandler);
 		this.app.use("/api/dishes", jwt.protect, dishesRouteHandler);
-		this.app.use("/api/assesments", userAssesmentFormRouter);
+		this.app.use("/api/assesments", jwt.protect, userAssesmentFormRouter);
 		this.app.use("/api/plans", plansRouteHandler);
+		this.app.use("/api/payments", paymentsRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();
