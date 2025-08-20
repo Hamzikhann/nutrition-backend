@@ -68,23 +68,27 @@ module.exports = {
 					name: "Free",
 					price: "0",
 					duration: "3 days",
-					features: "Basic features",
+					details: "[  Basic tracking,Limited workouts,Limited Diet Plans,  Limited Recipes,   No Community Support]",
+					isFree: "Y",
+
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					name: "Standard",
+					name: "3 Months Plan",
 					price: "99",
 					duration: "4 months",
-					features: "Standard features",
+					details: " [Full workouts, Progress tracking,    Community support, Full Diet Plans,   Full Recipes  ]",
+					isFree: "N",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					name: "Premium",
-					price: "199",
+					name: "6 Months Plan",
+					price: "4999",
 					duration: "6 months",
-					features: "Premium features",
+					details: " [Nutrition guide,Full workouts,Progress tracking,Community support,Full Diet Plans,Full Recipes,]",
+					isFree: "N",
 					createdAt: date,
 					updatedAt: date
 				}
@@ -92,126 +96,101 @@ module.exports = {
 			{}
 		);
 
-		await queryInterface.bulkInsert(
-			"programs",
-			[
-				{
-					title: "Free",
-					description: "Free Program",
-					createdAt: date,
-					updatedAt: date
-				},
-				{
-					title: "Standard",
-					description: "Standard Program",
-					createdAt: date,
-					updatedAt: date
-				},
-				{
-					title: "Premium",
-					description: "Premium Program",
-					createdAt: date,
-					updatedAt: date
-				}
-			],
-			{}
-		);
+		// await queryInterface.bulkInsert(
+		// 	"userPlans",
+		// 	[
+		// 		{
+		// 			userId: 2,
+		// 			planId: 2,
+		// 			startDate: date,
+		// 			endDate: date,
+		// 			createdAt: date,
+		// 			updatedAt: date
+		// 		},
 
-		await queryInterface.bulkInsert(
-			"userPrograms",
-			[
-				{
-					userId: 2,
-					programId: 2,
-					startDate: date,
-					endDate: date,
-					createdAt: date,
-					updatedAt: date
-				},
-
-				{
-					userId: "3",
-					programId: "3",
-					startDate: date,
-					endDate: date,
-					createdAt: date,
-					updatedAt: date
-				}
-			],
-			{}
-		);
+		// 		{
+		// 			userId: "3",
+		// 			planId: "3",
+		// 			startDate: date,
+		// 			endDate: date,
+		// 			createdAt: date,
+		// 			updatedAt: date
+		// 		}
+		// 	],
+		// 	{}
+		// );
 
 		await queryInterface.bulkInsert(
 			"weeks",
 			[
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 1",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 2",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 3",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 4",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 5",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 6",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 7",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 8",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 9",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 10",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 11",
 					createdAt: date,
 					updatedAt: date
 				},
 				{
-					programId: 2,
+					planId: 2,
 					title: "Week 12",
 					createdAt: date,
 					updatedAt: date

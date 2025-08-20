@@ -30,8 +30,6 @@ module.exports = (sequelize, DataTypes) => {
 		table.hasOne(models.userProfile);
 		table.hasMany(models.notifications);
 		table.hasMany(models.habits);
-		table.hasMany(models.programs);
-		table.hasMany(models.userPrograms);
 		table.hasMany(models.highlights);
 		table.hasMany(models.highlightViews);
 		table.hasOne(models.userAssesmentForm);

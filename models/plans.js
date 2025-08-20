@@ -7,7 +7,9 @@ module.exports = (sequelize, DataTypes) => {
 			name: DataTypes.STRING,
 			price: DataTypes.STRING,
 			duration: DataTypes.STRING,
-			features: DataTypes.TEXT,
+			details: DataTypes.TEXT,
+			isFree: { type: DataTypes.STRING, defaultValue: "N", allowNull: false },
+
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,

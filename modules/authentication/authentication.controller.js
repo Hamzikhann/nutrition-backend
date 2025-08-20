@@ -388,26 +388,13 @@ exports.verifyOtp = async (req, res) => {
 
 		// Handle different user states
 		if (user) {
-			if (user.isActive === "Y") {
+			if (user.isActive == "N") {
 				encryptHelper(user);
 
-				const token = jwt.signToken({
-					userId: user.id,
-					email: user.email,
-					roleId: user.roleId,
-					role: user.role?.title
-				});
-
-				return res.status(200).send({
-					message: "Logged in successfully",
-					data: { user },
-					token,
-					fcmToken: req.body?.fcmToken || ""
-				});
-			} else {
 				return res.status(401).send({
 					title: "User Not Active",
-					message: "User not active, please contact admin"
+					message: "User not active, please contact admin",
+					data: user
 				});
 			}
 		} else {

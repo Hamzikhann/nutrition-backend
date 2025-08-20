@@ -2,16 +2,21 @@ const db = require("../../models");
 const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
-const { uploadToS3 } = require("../../utils/awsServises");
+const { uploadFileToS3 } = require("../../utils/awsServises");
+const sequelize = db.sequelize; // ADD THIS LINE
 
 const UserAssesmentForm = db.userAssesmentForm;
 const UserAssesmentFormFiles = db.userAssesmentFormFiles;
+const Payment = db.payments;
+const User = db.users;
+const UserPlans = db.userPlans;
 
 exports.create = async (req, res) => {
 	const t = await sequelize.transaction();
 	try {
 		const schema = joi.object({
 			name: joi.string().required(),
+			userId: joi.string().required(),
 			email: joi.string().required(),
 			country: joi.string().optional(),
 			whatsAppContact: joi.string().optional(),
@@ -32,7 +37,12 @@ exports.create = async (req, res) => {
 			lunchOptions: joi.string().required(),
 			dinnerOptions: joi.string().required(),
 			snacksOptions: joi.string().required(),
-			meals: joi.string().required()
+			meals: joi.string().required(),
+			planId: joi.string().required(),
+			amount: joi.string().required(),
+			paymentMethod: joi.string().required(),
+			currency: joi.string().required(),
+			paymentIntentId: joi.string().required()
 		});
 
 		const { error } = schema.validate(req.body);
@@ -40,16 +50,60 @@ exports.create = async (req, res) => {
 			return res.status(400).send({ message: error.details[0].message });
 		}
 
-		const userId = crypto.decrypt(req.userId);
-		const formPayload = { ...req.body, userId };
+		const userId = crypto.decrypt(req.body.userId);
+		console.log(req.body);
+		// Create form payload
+		const formPayload = {
+			name: req.body.name ? req.body.name : "",
+			email: req.body.email ? req.body.email : "",
+			country: req.body.country ? req.body.country : "",
+			whatsAppContact: req.body.whatsAppContact ? req.body.whatsAppContact : "",
+			martialStatus: req.body.martialStatus ? req.body.martialStatus : "",
+			weight: req.body.weight ? req.body.weight : "",
+			height: req.body.height ? req.body.height : "",
+			age: req.body.age ? req.body.age : "",
+			physicalActivity: req.body.physicalActivity ? req.body.physicalActivity : "",
+			purpose: req.body.purpose ? req.body.purpose : "",
+			pocsDuration: req.body.pocsDuration ? req.body.pocsDuration : "",
+			pcosSymptoms: req.body.pcosSymptoms ? req.body.pcosSymptoms : "",
+			medicalHistory: req.body.medicalHistory ? req.body.medicalHistory : "",
+			lastPeriods: req.body.lastPeriods ? req.body.lastPeriods : "",
+			medicalConditions: req.body.medicalConditions ? req.body.medicalConditions : "",
+			medicines: req.body.medicines ? req.body.medicines : "",
+			ultrasoundHormonalTests: req.body.ultrasoundHormonalTests ? req.body.ultrasoundHormonalTests : "",
+			breakfastOptions: req.body.breakfastOptions ? req.body.breakfastOptions : "",
+			lunchOptions: req.body.lunchOptions ? req.body.lunchOptions : "",
+			dinnerOptions: req.body.dinnerOptions ? req.body.dinnerOptions : "",
+			snacksOptions: req.body.snacksOptions ? req.body.snacksOptions : "",
+			meals: req.body.meals ? req.body.meals : "",
+			planId: req.body.planId ? crypto.decrypt(req.body.planId) : "",
+
+			userId,
+			paymentId: null // Will be updated after payment creation
+		};
+
+		// Create payment
+		const paymentPayload = {
+			amount: req.body.amount,
+			currency: req.body.currency,
+			paymentMethod: req.body.paymentMethod,
+			status: "pending",
+			paymentIntentId: req.body.paymentIntentId,
+			userId: userId
+		};
+
+		const paymentData = await Payment.create(paymentPayload, { transaction: t });
+
+		// Update form payload with payment ID
+		formPayload.paymentId = paymentData.id;
 
 		// Create main form
 		const userAssessmentFormData = await UserAssesmentForm.create(formPayload, { transaction: t });
 
-		// Handle multiple files if present
-		if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-			for (let file of req.files) {
-				const s3Key = await uploadFileToS3(file, `userAssesmentForm/${userId}`);
+		// Handle assessment files (media)
+		if (req.files && req.files["media"] && Array.isArray(req.files["media"])) {
+			for (let file of req.files["media"]) {
+				const s3Key = await uploadFileToS3(file, `userAssesmentForm/${userId}/assessment`);
 
 				await UserAssesmentFormFiles.create(
 					{
@@ -64,12 +118,53 @@ exports.create = async (req, res) => {
 			}
 		}
 
+		// Handle payment screenshot
+		if (req.files && req.files["image"] && Array.isArray(req.files["image"])) {
+			const paymentFile = req.files["image"][0]; // Get first payment screenshot
+			const s3Key = await uploadFileToS3(paymentFile, `userAssesmentForm/${userId}/payment`);
+
+			await UserAssesmentFormFiles.create(
+				{
+					userId,
+					userAssesmentFormId: userAssessmentFormData.id,
+					fileName: paymentFile.originalname,
+					fileType: paymentFile.mimetype,
+					filePath: s3Key
+				},
+				{ transaction: t }
+			);
+
+			await User.update({ isPaid: "Y" }, { where: { id: userId }, transaction: t });
+
+			await UserPlans.create(
+				{
+					userId: userId,
+					planId: req.body.planId ? crypto.decrypt(req.body.planId) : "",
+					isActive: "Y"
+				},
+				{ transaction: t }
+			);
+
+			// Also update payment record with screenshot reference if needed
+			await Payment.update({ image: s3Key }, { where: { id: paymentData.id }, transaction: t });
+		}
+
 		await t.commit();
 
-		encryptHelper(userAssessmentFormData);
+		// Fetch complete data with associations if needed
+		const completeData = await UserAssesmentForm.findOne({
+			where: { id: userAssessmentFormData.id },
+			include: [
+				{
+					model: UserAssesmentFormFiles
+				}
+			]
+		});
+
+		encryptHelper(completeData);
 		return res.status(200).send({
 			message: "User Assessment Form Created Successfully",
-			data: userAssessmentFormData
+			data: completeData
 		});
 	} catch (err) {
 		await t.rollback();
@@ -77,7 +172,6 @@ exports.create = async (req, res) => {
 		return res.status(500).send({ message: err.message || "Internal Server Error" });
 	}
 };
-
 exports.update = async (req, res) => {
 	const t = await sequelize.transaction();
 	try {
