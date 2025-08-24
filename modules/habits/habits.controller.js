@@ -92,7 +92,8 @@ exports.list = async (req, res) => {
 
 		// Get all active habits (only mandatory ones count for progress)
 		const habits = await Habits.findAll({
-			where: whereClause
+			where: whereClause,
+			include: [{ model: HabitCompletions }]
 		});
 
 		// Filter only mandatory habits for progress calculation
