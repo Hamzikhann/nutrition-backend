@@ -10,7 +10,7 @@ const Exercise = db.exercises;
 
 exports.list = async (req, res) => {
 	try {
-		await Week.findAll({
+		let workout = await Week.findAll({
 			include: [
 				{
 					model: WorkoutDays,
@@ -26,23 +26,13 @@ exports.list = async (req, res) => {
 					]
 				}
 			]
-		})
-			.then((response) => {
-				encryptHelper(response);
-				return res.status(200).send({
-					message: "Work out day exercises listed successfully",
-					data: response
-				});
-			})
-			.then((err) => {
-				return res.status(400).send({
-					message: err.message || "Some error occurred while listing the work out day exercises."
-				});
-			});
-		// return res.status(200).send({
-		// 	message: "Work out day exercises listed successfully",
-		// 	data: workOutDayExercises
-		// });
+		});
+		encryptHelper(workout);
+
+		return res.status(200).send({
+			message: "Work out day exercises listed successfully",
+			data: workout
+		});
 	} catch (err) {
 		return res.status(400).send({
 			message: err.message || "Some error occurred while listing the work out day exercises."
