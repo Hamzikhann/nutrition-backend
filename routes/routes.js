@@ -10,6 +10,8 @@ const dishesRouteHandler = require("../modules/dishes/router");
 const userAssesmentFormRouter = require("../modules/userAssesmentForm/router");
 const plansRouteHandler = require("../modules/plans/router");
 const paymentsRouteHandler = require("../modules/payments/router");
+const exerciseRouteHandler = require("../modules/exercise/router");
+const workOutDaysExerciseRouteHandler = require("../modules/workOutDaysExercise/router");
 
 class Routes {
 	constructor(app) {
@@ -25,6 +27,8 @@ class Routes {
 		this.app.use("/api/assesments", jwt.protect, userAssesmentFormRouter);
 		this.app.use("/api/plans", plansRouteHandler);
 		this.app.use("/api/payments", paymentsRouteHandler);
+		this.app.use("/api/exercise", jwt.protect, exerciseRouteHandler);
+		this.app.use("/api/workout", jwt.protect, workOutDaysExerciseRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();
