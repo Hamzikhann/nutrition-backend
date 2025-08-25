@@ -19,13 +19,25 @@ exports.list = async (req, res) => {
 							model: WorkOutDayExercises,
 							include: [
 								{
-									model: Exercise
+									model: Exercise,
+									attributes: {
+										exclude: ["createdAt", "updatedAt", "workoutDayId"]
+									}
 								}
-							]
+							],
+							attributes: {
+								exclude: ["createdAt", "updatedAt", "exerciseId", "weekId", "workoutDayId"]
+							}
 						}
-					]
+					],
+					attributes: {
+						exclude: ["createdAt", "updatedAt"]
+					}
 				}
-			]
+			],
+			attributes: {
+				exclude: ["createdAt", "updatedAt", "order", "planId"]
+			}
 		});
 		encryptHelper(workout);
 
