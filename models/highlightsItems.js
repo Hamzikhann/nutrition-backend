@@ -29,6 +29,10 @@ module.exports = (sequelize, DataTypes) => {
 			isArchived: {
 				type: DataTypes.BOOLEAN,
 				defaultValue: false
+			},
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
 			}
 		},
 		{ timestamps: true }

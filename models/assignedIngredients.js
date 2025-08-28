@@ -5,7 +5,11 @@ module.exports = (sequelize, DataTypes) => {
 		"assignedIngredients",
 		{
 			name: DataTypes.STRING,
-			quantity: DataTypes.STRING
+			quantity: DataTypes.STRING,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

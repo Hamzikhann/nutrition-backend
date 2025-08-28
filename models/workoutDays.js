@@ -5,7 +5,11 @@ module.exports = (sequelize, DataTypes) => {
 		"workoutDays",
 		{
 			dayNumber: DataTypes.INTEGER,
-			title: DataTypes.STRING
+			title: DataTypes.STRING,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

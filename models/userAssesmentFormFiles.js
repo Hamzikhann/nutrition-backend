@@ -6,7 +6,11 @@ module.exports = (sequelize, DataTypes) => {
 		{
 			fileType: DataTypes.STRING,
 			fileName: DataTypes.STRING,
-			filePath: DataTypes.STRING
+			filePath: DataTypes.STRING,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

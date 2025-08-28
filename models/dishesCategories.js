@@ -2,11 +2,14 @@
 
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"meals",
+		"dishesCategories",
 		{
-			title: DataTypes.STRING,
-			description: DataTypes.TEXT,
-			image: DataTypes.STRING,
+			title: {
+				type: DataTypes.STRING
+			},
+			image: {
+				type: DataTypes.STRING
+			},
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"
@@ -15,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
 		{ timestamps: true }
 	);
 
-	table.associate = function (models) {
+	table.associate = (models) => {
 		table.hasMany(models.dishes);
 	};
 

@@ -5,7 +5,11 @@ module.exports = (sequelize, DataTypes) => {
 		"weeks",
 		{
 			title: DataTypes.STRING,
-			order: DataTypes.INTEGER
+			order: DataTypes.INTEGER,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

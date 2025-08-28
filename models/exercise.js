@@ -6,7 +6,11 @@ module.exports = (sequelize, DataTypes) => {
 		{
 			name: DataTypes.STRING,
 			description: DataTypes.TEXT,
-			videoURL: DataTypes.STRING
+			videoURL: DataTypes.STRING,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);
@@ -14,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
 	table.associate = function (models) {
 		table.belongsTo(models.workoutDays);
 		table.hasMany(models.workoutDayExercises);
-    };
+	};
 
 	return table;
 };

@@ -3,6 +3,10 @@ module.exports = (sequelize, DataTypes) => {
 		viewedAt: {
 			type: DataTypes.DATE,
 			defaultValue: DataTypes.NOW
+		},
+		isActive: {
+			type: DataTypes.STRING,
+			defaultValue: "Y"
 		}
 	});
 

@@ -4,9 +4,12 @@ module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
 		"workoutDayExercises",
 		{
-
 			sets: DataTypes.INTEGER,
-			reps: DataTypes.INTEGER
+			reps: DataTypes.INTEGER,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

@@ -5,7 +5,11 @@ module.exports = (sequelize, DataTypes) => {
 		"directions",
 		{
 			stepNumber: DataTypes.INTEGER,
-			description: DataTypes.TEXT
+			description: DataTypes.TEXT,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

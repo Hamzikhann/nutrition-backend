@@ -26,7 +26,11 @@ module.exports = (sequelize, DataTypes) => {
 			dinnerOptions: DataTypes.TEXT,
 			snacksOptions: DataTypes.TEXT,
 
-			meals: DataTypes.STRING
+			meals: DataTypes.STRING,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

@@ -9,7 +9,11 @@ module.exports = (sequelize, DataTypes) => {
 			paymentMethod: DataTypes.STRING,
 			status: DataTypes.STRING,
 			paymentIntentId: DataTypes.STRING,
-			file: DataTypes.STRING
+			file: DataTypes.STRING,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);

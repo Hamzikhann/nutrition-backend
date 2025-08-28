@@ -6,7 +6,11 @@ module.exports = (sequelize, DataTypes) => {
 		{
 			title: DataTypes.STRING,
 			description: DataTypes.TEXT,
-			image: DataTypes.STRING
+			image: DataTypes.STRING,
+			isActive: {
+				type: DataTypes.STRING,
+				defaultValue: "Y"
+			}
 		},
 		{ timestamps: true }
 	);
@@ -16,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
 		table.hasMany(models.nutrition);
 		table.hasMany(models.directions);
 		table.hasMany(models.assignedIngredients);
+		table.belongsTo(models.dishesCategories);
 	};
 
 	return table;

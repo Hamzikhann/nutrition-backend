@@ -18,4 +18,23 @@ router.post("/list", async (req, res) => {
 	await dishesController.list(req, res);
 });
 
+router.post("/create/category", upload.single("image"), async (req, res) => {
+	if (req.role == "Administrator") {
+		await dishesController.createCategory(req, res);
+	} else {
+		return res.status(400).send({
+			message: "You are not authorized to create a dish category"
+		});
+	}
+});
+router.post("/list/category", async (req, res) => {
+	if (req.role == "Administrator") {
+		await dishesController.listCategory(req, res);
+	} else {
+		return res.status(400).send({
+			message: "You are not authorized to create a dish category"
+		});
+	}
+});
+
 module.exports = router;
