@@ -11,6 +11,7 @@ const Nutrition = db.nutrition;
 const Directions = db.directions;
 const AssignedIngredients = db.assignedIngredients;
 const DishesCategories = db.dishesCategories;
+const Categories = db.categories;
 
 exports.create = async (req, res) => {
 	const t = await sequelize.transaction(); // start transaction
@@ -124,50 +125,56 @@ exports.create = async (req, res) => {
 
 exports.list = async (req, res) => {
 	try {
-		const dishes = await DishesCategories.findAll({
+		const dishes = await Categories.findAll({
 			// where: { isActive: "Y" },
 			include: [
 				{
-					model: Dishes,
-					required: false,
+					model: DishesCategories,
 					include: [
 						{
-							model: AssignedIngredients,
+							model: Dishes,
 							required: false,
-							attributes: {
-								exclude: ["name", "quantity", "createdAt", "updatedAt", "mealId"]
-							},
-
 							include: [
 								{
-									model: Ingredients,
+									model: AssignedIngredients,
+									required: false,
+									attributes: {
+										exclude: ["name", "quantity", "createdAt", "updatedAt", "mealId"]
+									},
+
+									include: [
+										{
+											model: Ingredients,
+											required: false,
+											attributes: {
+												exclude: ["createdAt", "updatedAt", "mealId"]
+											}
+										}
+									]
+								},
+								{
+									model: Nutrition,
+									required: false,
+									attributes: {
+										exclude: ["createdAt", "updatedAt", "mealId"]
+									}
+								},
+								{
+									model: Directions,
 									required: false,
 									attributes: {
 										exclude: ["createdAt", "updatedAt", "mealId"]
 									}
 								}
-							]
-						},
-						{
-							model: Nutrition,
-							required: false,
-							attributes: {
-								exclude: ["createdAt", "updatedAt", "mealId"]
-							}
-						},
-						{
-							model: Directions,
-							required: false,
+							],
 							attributes: {
 								exclude: ["createdAt", "updatedAt", "mealId"]
 							}
 						}
-					],
-					attributes: {
-						exclude: ["createdAt", "updatedAt", "mealId"]
-					}
+					]
 				}
 			],
+
 			attributes: {
 				exclude: ["isActive", "createdAt", "updatedAt"]
 			}
@@ -190,8 +197,10 @@ exports.list = async (req, res) => {
 exports.createCategory = async (req, res) => {
 	try {
 		const schema = Joi.object({
-			title: Joi.string().required()
+			title: Joi.string().required(),
+			categoryId: Joi.string().required()
 		});
+		console.log("req.body", req.body);
 		const { error } = schema.validate(req.body);
 		if (error) {
 			return res.status(400).send({ message: error.details[0].message });
@@ -199,9 +208,10 @@ exports.createCategory = async (req, res) => {
 		if (!req.file) {
 			return res.status(400).json({ error: "No file uploaded" });
 		}
-		console.log(req.file);
 
-		let exist = await DishesCategories.findOne({ where: { title: req.body.title } });
+		let exist = await DishesCategories.findOne({
+			where: { title: req.body.title, categoryId: crypto.decrypt(req.body.categoryId) }
+		});
 
 		if (exist) {
 			return res.status(200).json({ message: "This Category is Already created" });
@@ -211,7 +221,8 @@ exports.createCategory = async (req, res) => {
 
 		const category = await DishesCategories.create({
 			title: req.body.title,
-			image: s3Key
+			image: s3Key,
+			categoryId: crypto.decrypt(req.body.categoryId)
 		});
 		encryptHelper(category);
 		return res.status(200).send({
@@ -232,7 +243,7 @@ exports.listCategory = async (req, res) => {
 		let listCategory = await DishesCategories.findAll({
 			include: [
 				{
-					model: Dishes
+					model: Categories
 				}
 			]
 		});

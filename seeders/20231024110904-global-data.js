@@ -119,6 +119,32 @@ module.exports = {
 		// 	],
 		// 	{}
 		// );
+		await queryInterface.bulkInsert(
+			"categories",
+			[
+				{
+					title: "Breakfast",
+					createdAt: date,
+					updatedAt: date
+				},
+				{
+					title: "Lunch",
+					createdAt: date,
+					updatedAt: date
+				},
+				{
+					title: "Dinner",
+					createdAt: date,
+					updatedAt: date
+				},
+				{
+					title: "Snacks",
+					createdAt: date,
+					updatedAt: date
+				}
+			],
+			{}
+		);
 
 		await queryInterface.bulkInsert(
 			"weeks",
