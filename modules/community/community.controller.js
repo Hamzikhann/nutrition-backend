@@ -65,19 +65,25 @@ exports.createPost = async (req, res) => {
 				message: "Image is required"
 			});
 		}
-
-		const imageUrl = await uploadFileToS3(req.file, "communityPosts");
-
 		const category = await CommunityCategories.findOne({
 			where: {
 				id: crypto.decrypt(categoryId)
 			}
 		});
+
+		if (category.title == "Announcements" && req.role != "admin") {
+			return res.status(400).json({
+				message: "Only admin can create announcements"
+			});
+		}
+
 		if (!category) {
-			res.status(400).json({
+			return res.status(400).json({
 				message: "Category not found"
 			});
 		}
+
+		const imageUrl = await uploadFileToS3(req.file, "communityPosts");
 
 		const post = await CommunityPosts.create({
 			communityCategoryId: crypto.decrypt(categoryId),
