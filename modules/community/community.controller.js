@@ -59,7 +59,7 @@ exports.createPost = async (req, res) => {
 			});
 		}
 		const { categoryId, title, content } = value;
-		const userId = crypto.decrypt(req.user.id);
+		const userId = crypto.decrypt(req.userId);
 
 		if (!req.file) {
 			res.status(400).json({
