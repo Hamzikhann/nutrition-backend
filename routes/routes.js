@@ -13,6 +13,7 @@ const paymentsRouteHandler = require("../modules/payments/router");
 const exerciseRouteHandler = require("../modules/exercise/router");
 const workOutDaysExerciseRouteHandler = require("../modules/workOutDaysExercise/router");
 const categoriesRouteHandler = require("../modules/categories/router");
+const communityRouteHandler = require("../modules/community/router");
 
 class Routes {
 	constructor(app) {
@@ -31,6 +32,7 @@ class Routes {
 		this.app.use("/api/exercise", jwt.protect, exerciseRouteHandler);
 		this.app.use("/api/workout", jwt.protect, workOutDaysExerciseRouteHandler);
 		this.app.use("/api/categories", jwt.protect, categoriesRouteHandler);
+		this.app.use("/api/community", jwt.protect, communityRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();

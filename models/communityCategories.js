@@ -2,11 +2,10 @@
 
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"communityPosts",
+		"communityCategories",
+
 		{
 			title: DataTypes.STRING,
-			content: DataTypes.TEXT,
-			image: DataTypes.STRING, // optional, for post images
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"
@@ -17,10 +16,7 @@ module.exports = (sequelize, DataTypes) => {
 
 	table.associate = function (models) {
 		// If you have an Admin/User model, link here
-		table.belongsTo(models.users);
-		table.belongsTo(models.communityCategories);
-		table.hasMany(models.communityComments);
-		table.hasMany(models.communityLikes);
+		table.hasMany(models.communityPosts);
 	};
 
 	return table;
