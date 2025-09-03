@@ -72,7 +72,7 @@ exports.createPost = async (req, res) => {
 			}
 		});
 
-		if (category.title == "Announcements" && req.role != "admin") {
+		if (category.title == "Announcements" && req.role != "Administrator") {
 			return res.status(400).json({
 				message: "Only admin can create announcements"
 			});
