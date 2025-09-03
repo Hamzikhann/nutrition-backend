@@ -59,6 +59,7 @@ exports.createPost = async (req, res) => {
 			});
 		}
 		const { categoryId, title, content } = value;
+		const userId = crypto.decrypt(req.user.id);
 
 		if (!req.file) {
 			res.status(400).json({
@@ -89,7 +90,8 @@ exports.createPost = async (req, res) => {
 			communityCategoryId: crypto.decrypt(categoryId),
 			title,
 			content,
-			image: imageUrl
+			image: imageUrl,
+			userId
 		});
 		encryptHelper(post);
 		res.status(200).json({
