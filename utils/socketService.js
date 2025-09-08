@@ -9,7 +9,6 @@ function initSocket(serverIO) {
 
 		// Get userId from query or token (basic way for now)
 		const userId = socket.handshake.query.userId;
-		console.log("hand shake", userId);
 		if (userId) {
 			connectedUsers.set(userId, socket.id);
 			console.log("👤 User connected:", userId);
@@ -19,6 +18,17 @@ function initSocket(serverIO) {
 				connectedUsers.delete(userId);
 			});
 		}
+
+		// 🔹 Optional: let clients join a "post room"
+		socket.on("joinPost", (postId) => {
+			socket.join(`post_${postId}`);
+			console.log(`📌 User ${userId} joined room for post ${postId}`);
+		});
+
+		socket.on("leavePost", (postId) => {
+			socket.leave(`post_${postId}`);
+			console.log(`📌 User ${userId} left room for post ${postId}`);
+		});
 	});
 }
 
@@ -28,11 +38,7 @@ function getSocketIO() {
 
 function emitToUser(userId, event, data) {
 	let status = false;
-	console.log("userId", userId);
-	console.log("🧠 Emitting to:", userId);
-	console.log("🗺️ Connected users:", connectedUsers);
 	const socketId = connectedUsers.get(userId);
-	console.log(socketId);
 	if (socketId && io) {
 		io.to(socketId).emit(event, data);
 		status = true;
@@ -40,8 +46,24 @@ function emitToUser(userId, event, data) {
 	return status;
 }
 
+// 🔹 Broadcast to everyone
+function emitToAll(event, data) {
+	if (io) {
+		io.emit(event, data);
+	}
+}
+
+// 🔹 Broadcast to all users in a post room
+function emitToPostRoom(postId, event, data) {
+	if (io) {
+		io.to(`post_${postId}`).emit(event, data);
+	}
+}
+
 module.exports = {
 	initSocket,
 	getSocketIO,
-	emitToUser
+	emitToUser,
+	emitToAll,
+	emitToPostRoom
 };

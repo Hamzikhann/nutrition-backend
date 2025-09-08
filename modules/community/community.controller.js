@@ -6,6 +6,8 @@ const { uploadFileToS3 } = require("../../utils/awsServises");
 
 const CommunityCategories = db.communityCategories;
 const CommunityPosts = db.communityPosts;
+const CommunityLikes = db.communityLikes;
+const CommunityLikesCounter = db.communitylikesCounter;
 
 exports.createCategory = async (req, res) => {
 	try {
@@ -127,10 +129,27 @@ exports.listPosts = async (req, res) => {
 		const posts = await CommunityCategories.findAll({
 			include: [
 				{
-					model: CommunityPosts
+					model: CommunityPosts,
+					include: [
+						{
+							model: CommunityLikes // all user reactions
+							// attributes: ["id", "userId", "reactionType"],
+							// include: [
+							// 	{
+							// 		model: CommunityLikesCounter, // aggregated counters
+							// 		attributes: ["reactionType", "count"]
+							// 	}
+							// ]
+						},
+						{
+							model: CommunityLikesCounter, // aggregated counters
+							attributes: ["reactionType", "count"]
+						}
+					]
 				}
 			]
 		});
+
 		encryptHelper(posts);
 
 		res.status(200).json({

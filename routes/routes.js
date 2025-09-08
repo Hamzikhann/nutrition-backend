@@ -14,6 +14,8 @@ const exerciseRouteHandler = require("../modules/exercise/router");
 const workOutDaysExerciseRouteHandler = require("../modules/workOutDaysExercise/router");
 const categoriesRouteHandler = require("../modules/categories/router");
 const communityRouteHandler = require("../modules/community/router");
+const communityLikesRouteHandler = require("../modules/communityLikes/router");
+const communityCommentsRouteHandler = require("../modules/communityComments/router");
 
 class Routes {
 	constructor(app) {
@@ -33,6 +35,8 @@ class Routes {
 		this.app.use("/api/workout", jwt.protect, workOutDaysExerciseRouteHandler);
 		this.app.use("/api/categories", jwt.protect, categoriesRouteHandler);
 		this.app.use("/api/community", jwt.protect, communityRouteHandler);
+		this.app.use("/api/communityLikes", jwt.protect, communityLikesRouteHandler);
+		this.app.use("/api/communityComments", jwt.protect, communityCommentsRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();

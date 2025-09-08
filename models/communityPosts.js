@@ -21,6 +21,7 @@ module.exports = (sequelize, DataTypes) => {
 		table.belongsTo(models.communityCategories);
 		table.hasMany(models.communityComments);
 		table.hasMany(models.communityLikes);
+		table.hasMany(models.communitylikesCounter);
 	};
 
 	return table;
