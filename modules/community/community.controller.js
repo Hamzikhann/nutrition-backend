@@ -8,7 +8,7 @@ const CommunityCategories = db.communityCategories;
 const CommunityPosts = db.communityPosts;
 const CommunityLikes = db.communityLikes;
 const CommunityLikesCounter = db.communitylikesCounter;
-
+const CommunityComments = db.communityComments;
 exports.createCategory = async (req, res) => {
 	try {
 		const joiSchema = joi.object({
@@ -133,17 +133,13 @@ exports.listPosts = async (req, res) => {
 					include: [
 						{
 							model: CommunityLikes // all user reactions
-							// attributes: ["id", "userId", "reactionType"],
-							// include: [
-							// 	{
-							// 		model: CommunityLikesCounter, // aggregated counters
-							// 		attributes: ["reactionType", "count"]
-							// 	}
-							// ]
 						},
 						{
 							model: CommunityLikesCounter, // aggregated counters
 							attributes: ["reactionType", "count"]
+						},
+						{
+							model: CommunityComments
 						}
 					]
 				}
