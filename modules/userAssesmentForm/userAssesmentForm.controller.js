@@ -136,8 +136,7 @@ exports.create = async (req, res) => {
 			attributes: {
 				exclude: ["isActive", "createdAt", "updatedAt"]
 			}
-		});
-		a; // Assign meals to user in assignedMeals table
+		}); // Assign meals to user in assignedMeals table
 		for (const meal of matchingMeals) {
 			await AssignedMeals.create(
 				{
