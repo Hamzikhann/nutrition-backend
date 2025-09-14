@@ -4,8 +4,6 @@ const path = require("path");
 // Configure AWS
 require("dotenv").config();
 
-console.log(process.env.AWS_ACCESS_KEY_ID);
-
 // More robust AWS configuration
 AWS.config.update({
 	accessKeyId: process.env.AWS_ACCESS_KEY_ID.trim(),
@@ -22,6 +20,7 @@ const s3 = new AWS.S3({
 
 const uploadFileToS3 = async (file, folder = "uploads") => {
 	try {
+		console.log(file);
 		const fileExt = path.extname(file.originalname);
 		console.log(fileExt);
 

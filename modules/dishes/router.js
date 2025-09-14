@@ -27,6 +27,17 @@ router.post("/create/category", upload.single("image"), async (req, res) => {
 		});
 	}
 });
+
+router.post("/create/maincategory", upload.single("image"), async (req, res) => {
+	if (req.role == "Administrator") {
+		await dishesController.createMainCategory(req, res);
+	} else {
+		return res.status(400).send({
+			message: "You are not authorized to create a main category"
+		});
+	}
+});
+
 router.post("/list/category", async (req, res) => {
 	if (req.role == "Administrator") {
 		await dishesController.listCategory(req, res);

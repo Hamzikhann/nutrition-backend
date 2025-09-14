@@ -7,9 +7,11 @@ const jwt = require("../../utils/jwt");
 const authcontroller = require("./authentication.controller");
 
 router.post("/login", authcontroller.login);
+router.post("/login/v2", authcontroller.loginv2);
 router.post("/signup", (req, res) => {
 	authcontroller.signup(req, res);
 });
+
 router.post("/forgot/password", authcontroller.forgotPassword);
 router.post("/send/otp", authcontroller.sendOtp);
 router.post("/reset/password", jwt.protect, authcontroller.resetPassword);

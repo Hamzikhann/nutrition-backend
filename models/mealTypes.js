@@ -2,10 +2,9 @@
 
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"categories",
-
+		"mealTypes",
 		{
-			title: DataTypes.TEXT,
+			title: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"
@@ -15,8 +14,8 @@ module.exports = (sequelize, DataTypes) => {
 	);
 
 	table.associate = function (models) {
-		table.hasMany(models.dishesCategories);
 		table.hasMany(models.meals);
+		// meals no longer has dishes association
 	};
 
 	return table;

@@ -19,11 +19,12 @@ exports.create = async (req, res) => {
 	try {
 		const schema = Joi.object({
 			title: Joi.string().required(),
-			description: Joi.string().required(),
+			// description: Joi.string().required(),
 			ingredients: Joi.string().required(), // stringified JSON
-			nutrition: Joi.string().required(),
+			nutritions: Joi.string().required(),
 			directions: Joi.string().required(),
-			dishesCategoriesId: Joi.string().required()
+			categoryId: Joi.string().required(),
+			subCategoryId: Joi.string().required()
 		});
 
 		console.log(req.body);
@@ -38,13 +39,13 @@ exports.create = async (req, res) => {
 		console.log(req.file);
 
 		// Parse JSON fields
-		let { title, description, ingredients, nutrition, directions, dishesCategoriesId } = req.body;
-		ingredients = JSON.parse(ingredients);
-		nutrition = JSON.parse(nutrition);
-		directions = JSON.parse(directions);
+		let { title, ingredients, nutritions, directions, subCategoryId } = req.body;
+		// ingredients = JSON.parse(ingredients);
+		// nutrition = JSON.parse(nutrition);
+		// directions = JSON.parse(directions);
 
 		console.log(typeof ingredients);
-		console.log(typeof nutrition);
+		console.log(typeof nutritions);
 		console.log(typeof directions);
 
 		// Upload to S3
@@ -54,56 +55,60 @@ exports.create = async (req, res) => {
 		const dish = await Dishes.create(
 			{
 				title,
-				description,
+				description: req.body.description ? req.body.description : "",
 				image: s3Key,
-				dishesCategoryId: crypto.decrypt(dishesCategoriesId)
+				ingredients,
+				nutritions: nutritions,
+				directions,
+				dishesCategoryId: crypto.decrypt(subCategoryId)
 			},
 			{ transaction: t }
 		);
+
+		// const newIngredient = await Ingredients.create(
+		// 			{
+		// 				name:ingredients
+		// 			},
+		// 			{ transaction: t }
+		// 		);
 
 		// Handle Ingredients
-		for (let i = 0; i < ingredients.length; i++) {
-			const ingredient = ingredients[i];
-			let ingredientId;
+		// for (let i = 0; i < ingredients.length; i++) {
+		// 	const ingredient = ingredients[i];
+		// 	let ingredientId;
 
-			if (ingredient.id) {
-				ingredientId = crypto.decrypt(ingredient.id);
-			} else {
-				const newIngredient = await Ingredients.create(
-					{
-						name: ingredient.name
-					},
-					{ transaction: t }
-				);
-				ingredientId = newIngredient.id;
-			}
+		// 	if (ingredient.id) {
+		// 		ingredientId = crypto.decrypt(ingredient.id);
+		// 	} else {
+		// 		const newIngredient = await Ingredients.create(
+		// 			{
+		// 				name: ingredient.name
+		// 			},
+		// 			{ transaction: t }
+		// 		);
+		// 		ingredientId = newIngredient.id;
+		// 	}
 
-			await AssignedIngredients.create(
-				{
-					dishId: dish.id,
-					ingredientId: ingredientId
-				},
-				{ transaction: t }
-			);
-		}
+		// 	await AssignedIngredients.create(
+		// 		{
+		// 			dishId: dish.id,
+		// 			ingredientId: ingredientId
+		// 		},
+		// 		{ transaction: t }
+		// 	);
+		// }
 
 		// Nutrition
-		await Nutrition.create(
-			{
-				...nutrition,
-				dishId: dish.id
-			},
-			{ transaction: t }
-		);
+		// await Nutrition.create(
+		// 	{
+		// 		calories:nutrition,
+		// 		dishId: dish.id
+		// 	},
+		// 	{ transaction: t }
+		// );
 
-		// Directions
-		await Directions.bulkCreate(
-			directions.map((d) => ({
-				...d,
-				dishId: dish.id
-			})),
-			{ transaction: t }
-		);
+		// // Directions
+		// await Directions.create({ directions, dishId: dish.id }, { transaction: t });
 
 		encryptHelper(dish);
 
@@ -134,39 +139,39 @@ exports.list = async (req, res) => {
 						{
 							model: Dishes,
 							required: false,
-							include: [
-								{
-									model: AssignedIngredients,
-									required: false,
-									attributes: {
-										exclude: ["name", "quantity", "createdAt", "updatedAt", "mealId"]
-									},
+							// include: [
+							// 	{
+							// 		model: AssignedIngredients,
+							// 		required: false,
+							// 		attributes: {
+							// 			exclude: ["name", "quantity", "createdAt", "updatedAt", "mealId"]
+							// 		},
 
-									include: [
-										{
-											model: Ingredients,
-											required: false,
-											attributes: {
-												exclude: ["createdAt", "updatedAt", "mealId"]
-											}
-										}
-									]
-								},
-								{
-									model: Nutrition,
-									required: false,
-									attributes: {
-										exclude: ["createdAt", "updatedAt", "mealId"]
-									}
-								},
-								{
-									model: Directions,
-									required: false,
-									attributes: {
-										exclude: ["createdAt", "updatedAt", "mealId"]
-									}
-								}
-							],
+							// 		include: [
+							// 			{
+							// 				model: Ingredients,
+							// 				required: false,
+							// 				attributes: {
+							// 					exclude: ["createdAt", "updatedAt", "mealId"]
+							// 				}
+							// 			}
+							// 		]
+							// 	},
+							// 	{
+							// 		model: Nutrition,
+							// 		required: false,
+							// 		attributes: {
+							// 			exclude: ["createdAt", "updatedAt", "mealId"]
+							// 		}
+							// 	},
+							// 	{
+							// 		model: Directions,
+							// 		required: false,
+							// 		attributes: {
+							// 			exclude: ["createdAt", "updatedAt", "mealId"]
+							// 		}
+							// 	}
+							// ],
 							attributes: {
 								exclude: ["createdAt", "updatedAt", "mealId"]
 							}
@@ -238,6 +243,58 @@ exports.createCategory = async (req, res) => {
 	}
 };
 
+exports.createMainCategory = async (req, res) => {
+	try {
+		const schema = Joi.object({
+			name: Joi.string().required(),
+			subCategoryName: Joi.string().optional()
+		});
+		console.log("req.body", req.body);
+		const { error } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({ message: error.details[0].message });
+		}
+		if (!req.file) {
+			return res.status(400).json({ error: "No file uploaded" });
+		}
+
+		let exist = await Categories.findOne({
+			where: { title: req.body.name }
+		});
+
+		if (exist) {
+			return res.status(200).json({ message: "This Main Category is Already created" });
+		}
+
+		const s3Key = await uploadFileToS3(req.file, `categories`);
+
+		const category = await Categories.create({
+			title: req.body.name
+		});
+
+		// If subCategoryName is provided, create subcategory
+		if (req.body.subCategoryName) {
+			const subCategory = await DishesCategories.create({
+				title: req.body.subCategoryName,
+				image: s3Key, // Use same image or upload another?
+				categoryId: category.id
+			});
+		}
+
+		encryptHelper(category);
+		return res.status(200).send({
+			message: "Main category created successfully",
+			data: category
+		});
+	} catch (err) {
+		console.log(err);
+		// emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while creating the main category."
+		});
+	}
+};
+
 exports.listCategory = async (req, res) => {
 	try {
 		let listCategory = await DishesCategories.findAll({
@@ -248,11 +305,15 @@ exports.listCategory = async (req, res) => {
 			]
 		});
 
+		let list = await Categories.findAll({
+			include: [{ model: DishesCategories }]
+		});
 		encryptHelper(listCategory);
-
+		encryptHelper(list);
 		return res.status(200).send({
 			message: "Dishes Category List Fetched",
-			data: listCategory
+			data: listCategory,
+			list
 		});
 	} catch (err) {
 		console.log(err);

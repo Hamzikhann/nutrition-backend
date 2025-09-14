@@ -7,6 +7,9 @@ module.exports = (sequelize, DataTypes) => {
 			title: DataTypes.STRING,
 			description: DataTypes.TEXT,
 			image: DataTypes.STRING,
+			ingredients: DataTypes.TEXT,
+			directions: DataTypes.TEXT,
+			nutritions: DataTypes.TEXT,
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"
@@ -17,9 +20,9 @@ module.exports = (sequelize, DataTypes) => {
 
 	table.associate = function (models) {
 		table.belongsTo(models.meals);
-		table.hasMany(models.nutrition);
-		table.hasMany(models.directions);
-		table.hasMany(models.assignedIngredients);
+		table.hasOne(models.nutrition);
+		table.hasOne(models.directions);
+		// table.hasMany(models.assignedIngredients);
 		table.belongsTo(models.dishesCategories);
 	};
 

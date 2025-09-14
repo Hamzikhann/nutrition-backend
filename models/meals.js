@@ -7,6 +7,15 @@ module.exports = (sequelize, DataTypes) => {
 			title: DataTypes.STRING,
 			description: DataTypes.TEXT,
 			image: DataTypes.STRING,
+			kcalOptions: DataTypes.TEXT,
+			planName: DataTypes.STRING,
+			subCategory: DataTypes.STRING,
+			ingredientsDetails: DataTypes.TEXT,
+			cookingSteps: DataTypes.TEXT,
+			nutritionCalories: DataTypes.STRING,
+			nutritionProtein: DataTypes.STRING,
+			nutritionCarbs: DataTypes.STRING,
+			nutritionFat: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"
@@ -15,9 +24,11 @@ module.exports = (sequelize, DataTypes) => {
 		{ timestamps: true }
 	);
 
-	table.associate = function (models) {
-		table.hasMany(models.dishes);
+	// Remove associations as meals are standalone entities now
+	table.associate = (models) => {
+		table.hasMany(models.assignedMeals);
+		table.belongsTo(models.mealTypes);
+		table.belongsTo(models.categories);
 	};
-
 	return table;
 };

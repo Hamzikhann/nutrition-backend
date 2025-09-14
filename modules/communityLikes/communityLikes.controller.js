@@ -204,6 +204,7 @@ exports.getPostReactionCounts = async (req, res) => {
 		if (!counts) {
 			const rows = await CommunityLikesCounter.findAll({
 				where: { communityPostId: postId },
+				include: [{ model: db.users }],
 				attributes: ["reactionType", "count"],
 				order: [["reactionType", "ASC"]]
 			});
@@ -227,6 +228,50 @@ exports.getPostReactionCounts = async (req, res) => {
 		return res.json({ success: true, postId, counts });
 	} catch (err) {
 		console.error(err);
+		return res.status(500).json({ success: false, error: err.message });
+	}
+};
+
+exports.list = async (req, res) => {
+	try {
+		let { postId } = req.body;
+		const redis = req.app.get("redis");
+
+		if (!postId) {
+			return res.status(400).json({ success: false, message: "postId is required" });
+		}
+
+		// 🔐 Decrypt postId
+		postId = crypto.decrypt(postId);
+
+		// ✅ Get counts per reaction (e.g., { love: 3, like: 1 })
+		const counts = await CommunityLikesCounter.findAll({
+			where: { communityPostId: postId }
+			// attributes: ["reaction", "count"]
+		});
+
+		// ✅ Get list of users who liked/reacted to the post
+		const userLikes = await CommunityLikes.findAll({
+			where: { communityPostId: postId },
+			// attributes: ["reaction", "userId", "createdAt"],
+			include: [
+				{
+					model: db.users // assuming model name is Users
+					// attributes: ["id", "name", "profileImage"] // customize as needed
+				}
+			],
+			order: [["createdAt", "DESC"]] // optional: latest first
+		});
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				counts, // [{ reaction: "love", count: 3 }, ...]
+				userLikes // [{ userId: 1, reaction: "love", User: { id, name, profileImage } }, ...]
+			}
+		});
+	} catch (err) {
+		console.error("Error in fetching reactions:", err);
 		return res.status(500).json({ success: false, error: err.message });
 	}
 };

@@ -86,7 +86,7 @@ exports.createPost = async (req, res) => {
 			});
 		}
 
-		const imageUrl = await uploadFileToS3(req.file, "communityPosts");
+		const imageUrl = await uploadFileToS3(req.file, "/communityPosts");
 
 		const post = await CommunityPosts.create({
 			communityCategoryId: crypto.decrypt(categoryId),
@@ -129,19 +129,19 @@ exports.listPosts = async (req, res) => {
 		const posts = await CommunityCategories.findAll({
 			include: [
 				{
-					model: CommunityPosts,
-					include: [
-						{
-							model: CommunityLikes // all user reactions
-						},
-						{
-							model: CommunityLikesCounter, // aggregated counters
-							attributes: ["reactionType", "count"]
-						},
-						{
-							model: CommunityComments
-						}
-					]
+					model: CommunityPosts
+					// include: [
+					// {
+					// 	model: CommunityLikes // all user reactions
+					// },
+					// {
+					// 	model: CommunityLikesCounter, // aggregated counters
+					// 	attributes: ["reactionType", "count"]
+					// },
+					// {
+					// 	model: CommunityComments
+					// }
+					// ]
 				}
 			]
 		});

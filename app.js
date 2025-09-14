@@ -20,7 +20,7 @@ class Server {
 		this.app = express();
 		this.io = require("socket.io")();
 
-		// 🔹 Initialize Redis
+		// // 🔹 Initialize Redis
 		this.redis = new Redis({
 			host: process.env.REDIS_HOST || "127.0.0.1",
 			port: process.env.REDIS_PORT || 6379
@@ -99,7 +99,7 @@ class Server {
 		});
 
 		// 🔹 Pass Redis to Socket service
-		initSocket(io, this.redis);
+		initSocket(io);
 
 		server.listen(port);
 		if (server.listening) {

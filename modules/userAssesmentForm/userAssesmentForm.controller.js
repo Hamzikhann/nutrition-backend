@@ -3,10 +3,40 @@ const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
 const { uploadFileToS3 } = require("../../utils/awsServises");
-const sequelize = db.sequelize; // ADD THIS LINE
-
+const sequelize = db.sequelize;
+const { Op, literal } = db.Sequelize;
 const UserAssesmentForm = db.userAssesmentForm;
 const UserAssesmentFormFiles = db.userAssesmentFormFiles;
+const AssignedMeals = db.assignedMeals;
+const Meals = db.meals;
+const MealsType = db.mealTypes;
+const Categories = db.categories;
+
+const calculateKcalPlan = (weight, height, age) => {
+	const bmr = 655.1 + 9.6 * parseFloat(weight) + 1.58 * parseFloat(height) - 4.7 * parseFloat(age);
+	const adjustedBmr = bmr * 1.3 - 500;
+
+	let kcalPlan;
+	if (adjustedBmr >= 1951) {
+		kcalPlan = 2000;
+	} else if (adjustedBmr >= 1851) {
+		kcalPlan = 1900;
+	} else if (adjustedBmr >= 1751) {
+		kcalPlan = 1800;
+	} else if (adjustedBmr >= 1651) {
+		kcalPlan = 1700;
+	} else if (adjustedBmr >= 1551) {
+		kcalPlan = 1600;
+	} else if (adjustedBmr >= 1451) {
+		kcalPlan = 1500;
+	} else if (adjustedBmr >= 1351) {
+		kcalPlan = 1400;
+	} else {
+		kcalPlan = 1300;
+	}
+
+	return { bmr, adjustedBmr, kcalPlan };
+};
 
 exports.create = async (req, res) => {
 	const t = await sequelize.transaction();
@@ -53,7 +83,7 @@ exports.create = async (req, res) => {
 			weight: req.body.weight ? req.body.weight : "",
 			height: req.body.height ? req.body.height : "",
 			age: req.body.age ? req.body.age : "",
-			physicalActivity: req.body.physicalActivity ? req.body.physicalActivity : "",
+			physicalActivity: req.body.physicalActivity ? JSON.stringify(req.body.physicalActivity) : "",
 			purpose: req.body.purpose ? req.body.purpose : "",
 			pocsDuration: req.body.pocsDuration ? req.body.pocsDuration : "",
 			pcosSymptoms: req.body.pcosSymptoms ? req.body.pcosSymptoms : "",
@@ -92,29 +122,80 @@ exports.create = async (req, res) => {
 			}
 		}
 
-		await t.commit();
+		// Calculate kcal plan and assign meals
+		const { bmr, adjustedBmr, kcalPlan } = calculateKcalPlan(req.body.weight, req.body.height, req.body.age);
+		console.log(kcalPlan);
+		console.log(adjustedBmr);
+		console.log(bmr);
+		// Find meal plans that match the calculated kcal
+		const matchingMeals = await Meals.findAll({
+			where: {
+				isActive: "Y",
+				[Op.and]: [literal(`CONCAT(',', kcalOptions, ',') LIKE '%,${kcalPlan},%'`)]
+			},
+			attributes: {
+				exclude: ["isActive", "createdAt", "updatedAt"]
+			}
+		});
+		a; // Assign meals to user in assignedMeals table
+		for (const meal of matchingMeals) {
+			await AssignedMeals.create(
+				{
+					userId,
+					mealId: meal.id,
+					assessmentId: userAssessmentFormData.id,
+					mealTypeId: meal.mealTypeId,
+					calculatedKcal: kcalPlan,
+					userAssesmentFormId: userAssessmentFormData.id
+				},
+				{ transaction: t }
+			);
+		}
 
+		// Commit before fetching complete data
+		await t.commit();
+		let updateuser = await db.users.update({ isFormCreated: "Y" }, { where: { id: userId } });
 		// Fetch complete data with associations if needed
 		const completeData = await UserAssesmentForm.findOne({
 			where: { id: userAssessmentFormData.id },
 			include: [
 				{
-					model: UserAssesmentFormFiles
+					model: UserAssesmentFormFiles,
+					required: false
+				},
+				{
+					model: AssignedMeals,
+					include: [
+						{
+							model: Meals,
+							include: [
+								{
+									model: MealsType,
+									attributes: ["title"]
+								},
+								{
+									model: Categories,
+									attributes: ["title"]
+								}
+							]
+						}
+					]
 				}
 			]
 		});
 
 		encryptHelper(completeData);
 		return res.status(200).send({
-			message: "User Assessment Form Created Successfully",
+			message: "User Assessment Form Created Successfully with Assigned Meals",
 			data: completeData
 		});
 	} catch (err) {
-		await t.rollback();
+		if (!t.finished) await t.rollback();
 		console.error("Error creating User Assessment Form:", err);
 		return res.status(500).send({ message: err.message || "Internal Server Error" });
 	}
 };
+
 exports.update = async (req, res) => {
 	const t = await sequelize.transaction();
 	try {
@@ -160,7 +241,7 @@ exports.update = async (req, res) => {
 			data: userAssessmentFormData
 		});
 	} catch (err) {
-		await t.rollback();
+		if (!t.finished) await t.rollback();
 		console.error("Error updating User Assessment Form:", err);
 		return res.status(500).send({ message: err.message || "Internal Server Error" });
 	}
@@ -189,8 +270,77 @@ exports.updateFiles = async (req, res) => {
 			data: userAssessmentFormData
 		});
 	} catch (err) {
-		await t.rollback();
+		if (!t.finished) await t.rollback();
 		console.error("Error updating User Assessment Form Files:", err);
+		return res.status(500).send({ message: err.message || "Internal Server Error" });
+	}
+};
+
+exports.getAssignedMeals = async (req, res) => {
+	try {
+		const schema = joi.object({
+			userId: joi.string().required()
+		});
+
+		const { error } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({ message: error.details[0].message });
+		}
+
+		const userId = crypto.decrypt(req.body.userId);
+
+		const assignedMeals = await AssignedMeals.findAll({
+			where: {
+				userId,
+				isActive: "Y"
+			},
+			include: [
+				{
+					model: Meals,
+					include: [
+						{
+							model: MealsType,
+							attributes: ["title"]
+						},
+						{
+							model: Categories,
+							attributes: ["title"]
+						}
+					],
+					attributes: {
+						exclude: ["isActive", "createdAt", "updatedAt"]
+					}
+				},
+				{
+					model: UserAssesmentForm,
+					attributes: ["name", "email", "weight", "height", "age"]
+				}
+			],
+			attributes: {
+				exclude: ["isActive", "createdAt", "updatedAt"]
+			}
+		});
+
+		// Group meals by meal type
+		const groupedMeals = {};
+		assignedMeals.forEach((assignment) => {
+			const mealType = assignment.meal.mealType.title;
+			if (!groupedMeals[mealType]) {
+				groupedMeals[mealType] = [];
+			}
+			groupedMeals[mealType].push(assignment);
+		});
+
+		encryptHelper(assignedMeals);
+		return res.status(200).send({
+			message: "Assigned meals retrieved successfully",
+			data: {
+				groupedByMealType: groupedMeals,
+				allMeals: assignedMeals
+			}
+		});
+	} catch (err) {
+		console.error("Error retrieving assigned meals:", err);
 		return res.status(500).send({ message: err.message || "Internal Server Error" });
 	}
 };

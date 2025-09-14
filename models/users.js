@@ -8,6 +8,10 @@ module.exports = (sequelize, DataTypes) => {
 			lastName: DataTypes.STRING,
 			phoneNo: DataTypes.STRING,
 			email: DataTypes.STRING,
+			isFormCreated: {
+				type: DataTypes.STRING,
+				defaultValue: "N"
+			},
 			password: DataTypes.STRING,
 			imageURL: DataTypes.STRING,
 			fcmToken: DataTypes.TEXT,
@@ -33,6 +37,7 @@ module.exports = (sequelize, DataTypes) => {
 		table.hasMany(models.highlights);
 		table.hasMany(models.highlightViews);
 		table.hasOne(models.userAssesmentForm);
+		table.hasOne(models.payments);
 		table.hasMany(models.userPlans);
 		table.hasMany(models.habitsCompletions);
 	};

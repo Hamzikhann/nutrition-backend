@@ -4,6 +4,6 @@ const communityLikesController = require("./communityLikes.controller");
 
 router.post("/react", communityLikesController.addOrUpdateReaction);
 router.post("/unreact", communityLikesController.removeReaction);
-router.post("/counts", communityLikesController.getPostReactionCounts);
+router.post("/counts", communityLikesController.list);
 
 module.exports = router;

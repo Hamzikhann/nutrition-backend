@@ -27,4 +27,8 @@ router.post("/update/files", upload.array("media"), (req, res) => {
 	userAssesmentFormController.updateFiles(req, res);
 });
 
+router.post("/assigned-meals", (req, res) => {
+	userAssesmentFormController.getAssignedMeals(req, res);
+});
+
 module.exports = router;

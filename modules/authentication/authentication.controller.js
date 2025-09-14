@@ -418,3 +418,66 @@ exports.verifyOtp = async (req, res) => {
 		});
 	}
 };
+
+exports.loginv2 = async (req, res) => {
+	try {
+		const userExist = await Users.findOne({
+			where: {
+				email: req.body.email.trim(),
+				isActive: "Y"
+			},
+			attributes: ["password"],
+			raw: true
+		});
+		if (userExist) {
+			const user = await Users.findOne({
+				where: {
+					email: req.body.email.trim(),
+					password: req.body.password,
+					isActive: "Y"
+				},
+				include: [
+					{
+						model: Roles,
+						attributes: ["title"]
+					}
+				],
+				attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL"]
+			});
+			if (user && userExist.password === req.body.password) {
+				if (req.body.fcmToken) {
+					let updateUser = Users.update({ fcmToken: req.body.fcmToken }, { where: { id: user.id } });
+				}
+				encryptHelper(user);
+
+				const token = jwt.signToken({
+					userId: user.id,
+					email: user?.email,
+					roleId: user.roleId,
+					role: user.role.title
+				});
+				res.status(200).send({
+					message: "Logged in successful",
+					data: { user },
+					token,
+					fcmToken: req.body?.fcmToken ? req.body?.fcmToken : ""
+				});
+			} else {
+				res.status(403).send({
+					title: "Incorrect Logins",
+					message: "Incorrect Logins"
+				});
+			}
+		} else {
+			res.status(401).send({
+				title: "Incorrect Email.",
+				message: "Email does not exist in our system, Please verify you have entered correct email."
+			});
+		}
+	} catch (err) {
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred."
+		});
+	}
+};

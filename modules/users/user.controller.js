@@ -6,10 +6,15 @@ const emails = require("../../utils/emails");
 const crypto = require("../../utils/crypto");
 const { sequelize } = require("../../models");
 const { Op } = require("sequelize");
+// import { uploadFileToS3 } from "../../utils/awsServises";
+const { uploadFileToS3 } = require("../../utils/awsServises");
 
 const Users = db.users;
 const Roles = db.roles;
 const UserProfile = db.userProfile;
+const Plan = db.plans;
+const Payment = db.payments;
+const UserPlans = db.userPlans;
 
 exports.updateStatus = async (req, res) => {
 	try {
@@ -39,90 +44,109 @@ exports.updateStatus = async (req, res) => {
 	}
 };
 
-// exports.create = async (req, res) => {
-// 	try {
-// 		const joiSchema = Joi.object({
-// 			title: Joi.string().required(),
-// 			firstName: Joi.string().required(),
-// 			lastName: Joi.string().required(),
-// 			phoneNo: Joi.string().required(),
-// 			email: Joi.string().email().required(),
-// 			password: Joi.string().min(8).max(16).required(),
-// 			confirmPassword: Joi.string()
-// 				.valid(Joi.ref("password"))
-// 				.required()
-// 				.label("Confirm password")
-// 				.messages({ "any.only": "{{#label}} does not match password" }),
-// 			roleId: Joi.string().optional().allow("").allow(null)
-// 		});
-// 		const { error, value } = joiSchema.validate(req.body);
+exports.create = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			firstName: Joi.string().required(),
+			lastName: Joi.string().required(),
+			phoneNo: Joi.string().required(),
+			email: Joi.string().email().required(),
+			planId: Joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
 
-// 		if (error) {
-// 			emails.errorEmail(req, error);
+		if (error) {
+			emails.errorEmail(req, error);
 
-// 			const message = error.details[0].message.replace(/"/g, "");
-// 			res.status(400).send({
-// 				message: message
-// 			});
-// 		} else {
-// 			const userExists = await Users.findOne({ where: { email: req.body.email?.trim(), isActive: "Y" } });
+			const message = error.details[0].message.replace(/"/g, "");
+			res.status(400).send({
+				message: message
+			});
+		} else {
+			if (!req.file) {
+				return res.status(201).send({
+					message: "File is required"
+				});
+			}
 
-// 			if (userExists) {
-// 				res.status(401).send({
-// 					title: "Email already exists!",
-// 					mesage: "Email already registered."
-// 				});
-// 			} else {
-// 				const userObj = {
-// 					title: req.body.title,
-// 					firstName: req.body.firstName?.trim(),
-// 					lastName: req.body.lastName?.trim(),
-// 					phoneNo: req.body.phoneNo,
-// 					email: req.body.email,
-// 					password: req.body.password
-// 					// roleId: crypto.decrypt(req.body.roleId)
-// 				};
-// 				if (req.role == "Administrator") userObj.roleId = crypto.decrypt(req.body.roleId);
-// 				else userObj.roleId = "3";
+			const userExists = await Users.findOne({ where: { email: req.body.email?.trim(), isActive: "Y" } });
 
-// 				let transaction = await sequelize.transaction();
-// 				Users.create(userObj, { transaction })
-// 					.then(async (user) => {
-// 						UserProfile.create({ userId: user.id }, { transaction })
-// 							.then(async (profile) => {
-// 								await transaction.commit();
+			if (userExists) {
+				res.status(401).send({
+					title: "Email already exists!",
+					mesage: "Email already registered."
+				});
+			} else {
+				const userObj = {
+					firstName: req.body.firstName?.trim(),
+					lastName: req.body.lastName?.trim(),
+					phoneNo: req.body.phoneNo,
+					email: req.body.email,
+					isActive: "N",
+					roleId: 2
+				};
+				let transactionUpload = await uploadFileToS3(req.file, "Payments");
+				const getPlan = await Plan.findOne({ where: { id: crypto.decrypt(req.body.planId), isActive: "Y" } });
 
-// 								encryptHelper(user);
+				// if (req.role == "Administrator") userObj.roleId = crypto.decrypt(req.body.roleId);
+				// else userObj.roleId = "3";
 
-// 								res.status(200).send({
-// 									message: "User created successfully.",
-// 									data: user
-// 								});
-// 							})
-// 							.catch(async (err) => {
-// 								if (transaction) await transaction.rollback();
-// 								emails.errorEmail(req, err);
-// 								res.status(500).send({
-// 									message: err.message || "Some error occurred while creating the Quiz."
-// 								});
-// 							});
-// 					})
-// 					.catch(async (err) => {
-// 						if (transaction) await transaction.rollback();
-// 						emails.errorEmail(req, err);
-// 						res.status(500).send({
-// 							message: err.message || "Some error occurred while creating the Quiz."
-// 						});
-// 					});
-// 			}
-// 		}
-// 	} catch (err) {
-// 		emails.errorEmail(req, err);
-// 		res.status(500).send({
-// 			message: err.message || "Some error occurred."
-// 		});
-// 	}
-// };
+				let transaction = await sequelize.transaction();
+				Users.create(userObj, { transaction })
+					.then(async (user) => {
+						UserProfile.create({ userId: user.id }, { transaction })
+							.then(async (profile) => {
+								const transactionObj = {
+									amount: getPlan.price,
+									currency: "Rupees",
+									paymentMethod: "Online",
+									status: "Paid",
+									paymentIntentId: "",
+									file: transactionUpload,
+									userId: user.id
+								};
+								let createUserPlans = await UserPlans.create(
+									{
+										planId: getPlan.id,
+										userId: user.id
+									},
+									{ transaction }
+								);
+
+								let createTransection = await Payment.create(transactionObj, { transaction });
+								await transaction.commit();
+								let updateUser = await Users.update({ isPaid: "Y" }, { where: { id: user.id } });
+								encryptHelper(user);
+
+								res.status(200).send({
+									message: "User created successfully.",
+									data: user
+								});
+							})
+							.catch(async (err) => {
+								if (transaction) await transaction.rollback();
+								emails.errorEmail(req, err);
+								res.status(500).send({
+									message: err.message || "Some error occurred while creating the Quiz."
+								});
+							});
+					})
+					.catch(async (err) => {
+						if (transaction) await transaction.rollback();
+						emails.errorEmail(req, err);
+						res.status(500).send({
+							message: err.message || "Some error occurred while creating the Quiz."
+						});
+					});
+			}
+		}
+	} catch (err) {
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred."
+		});
+	}
+};
 
 // exports.update = async (req, res) => {
 // 	try {
@@ -332,6 +356,13 @@ exports.listUsers = (req, res) => {
 					model: Roles,
 					where: { isActive: "Y" },
 					attributes: ["title"]
+				},
+				{
+					model: UserPlans,
+					include: [{ model: Plan }]
+				},
+				{
+					model: Payment
 				}
 			],
 			attributes: { exclude: ["updatedAt", "password"] }
