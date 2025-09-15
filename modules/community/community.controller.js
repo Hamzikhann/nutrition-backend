@@ -129,19 +129,31 @@ exports.listPosts = async (req, res) => {
 		const posts = await CommunityCategories.findAll({
 			include: [
 				{
-					model: CommunityPosts
-					// include: [
-					// {
-					// 	model: CommunityLikes // all user reactions
-					// },
-					// {
-					// 	model: CommunityLikesCounter, // aggregated counters
-					// 	attributes: ["reactionType", "count"]
-					// },
-					// {
-					// 	model: CommunityComments
-					// }
-					// ]
+					model: CommunityPosts,
+					include: [
+						{
+							model: CommunityLikes, // all user reactions
+							include: [
+								{
+									model: db.users,
+									attributes: ["id", "firstName", "lastName"],
+									include: [
+										{
+											model: db.roles,
+											attributes: ["title"]
+										}
+									]
+								}
+							]
+						},
+						{
+							model: CommunityLikesCounter, // aggregated counters
+							attributes: ["reactionType", "count"]
+						}
+						// {
+						// 	model: CommunityComments
+						// }
+					]
 				}
 			]
 		});
