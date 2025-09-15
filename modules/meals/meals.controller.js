@@ -18,6 +18,7 @@ exports.create = async (req, res) => {
 			description: Joi.string().optional(),
 			kcalOptions: Joi.string().required(),
 			category: Joi.string().required(),
+			subCategory: Joi.string().required(),
 			ingredientsDetails: Joi.string().optional(),
 			cookingSteps: Joi.string().optional(),
 			nutritionCalories: Joi.string().optional(),
@@ -37,6 +38,7 @@ exports.create = async (req, res) => {
 			description,
 			kcalOptions,
 			category,
+			subCategory,
 			ingredientsDetails,
 			cookingSteps,
 			nutritionCalories,
@@ -68,6 +70,7 @@ exports.create = async (req, res) => {
 				image: videoUrl,
 				kcalOptions: kcalOptions,
 				categoryId: crypto.decrypt(category),
+				subCategoryId: crypto.decrypt(subCategory),
 				ingredientsDetails,
 				cookingSteps,
 				nutritionCalories,
@@ -98,18 +101,38 @@ exports.create = async (req, res) => {
 
 exports.list = async (req, res) => {
 	try {
-		const meals = await Meals.findAll({
-			where: { isActive: "Y" },
-			include: [
-				{
-					model: db.mealTypes,
-					attributes: ["title"]
-				},
-				{
-					model: db.categories,
-					attributes: ["title"]
-				}
-			],
+		let role = req.role;
+		let whereClause = { isActive: "Y" };
+		let includeClause = [];
+
+		// Base include for all roles
+		includeClause = [
+			{
+				model: db.mealTypes,
+				attributes: ["title"]
+			},
+			{
+				model: db.categories,
+				attributes: ["title"]
+			},
+			{
+				model: db.dishesCategories,
+				attributes: ["title"]
+			}
+		];
+		console.log(crypto.decrypt(req.userId));
+		// For non-administrator users, filter by assigned meals
+		if (role !== "Administrator") {
+			includeClause.push({
+				model: db.assignedMeals,
+				where: { isActive: "Y", userId: crypto.decrypt(req.userId) },
+				required: true // Use INNER JOIN to only get meals that are assigned to the user
+			});
+		}
+
+		const meals = await db.meals.findAll({
+			where: whereClause,
+			include: includeClause,
 			attributes: {
 				exclude: ["isActive", "createdAt", "updatedAt"]
 			}

@@ -20,6 +20,8 @@ module.exports = (sequelize, DataTypes) => {
 
 	table.associate = (models) => {
 		table.hasMany(models.dishes);
+		table.hasMany(models.meals);
+		table.belongsTo(models.mealTypes);
 		table.belongsTo(models.categories);
 	};
 

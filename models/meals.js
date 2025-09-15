@@ -28,6 +28,7 @@ module.exports = (sequelize, DataTypes) => {
 	table.associate = (models) => {
 		table.hasMany(models.assignedMeals);
 		table.belongsTo(models.mealTypes);
+		table.belongsTo(models.dishesCategories);
 		table.belongsTo(models.categories);
 	};
 	return table;

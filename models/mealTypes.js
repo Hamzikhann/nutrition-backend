@@ -14,7 +14,8 @@ module.exports = (sequelize, DataTypes) => {
 	);
 
 	table.associate = function (models) {
-		table.hasMany(models.meals);
+		table.hasMany(models.dishesCategories);
+
 		// meals no longer has dishes association
 	};
 

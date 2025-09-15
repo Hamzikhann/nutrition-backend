@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
 	);
 
 	table.associate = function (models) {
-		table.belongsTo(models.meals);
+		// table.belongsTo(models.meals);
 		table.hasOne(models.nutrition);
 		table.hasOne(models.directions);
 		// table.hasMany(models.assignedIngredients);
