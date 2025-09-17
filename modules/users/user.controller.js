@@ -15,6 +15,8 @@ const UserProfile = db.userProfile;
 const Plan = db.plans;
 const Payment = db.payments;
 const UserPlans = db.userPlans;
+const UserAssesmentForm = db.userAssesmentForm;
+const UserAssesmentFormFiles = db.userAssesmentFormFiles;
 
 exports.updateStatus = async (req, res) => {
 	try {
@@ -363,6 +365,12 @@ exports.listUsers = (req, res) => {
 				},
 				{
 					model: Payment
+				},
+				{
+					model: UserAssesmentForm,
+					where: { isActive: "Y" },
+					required: false,
+					include: [{ model: UserAssesmentFormFiles }]
 				}
 			],
 			attributes: { exclude: ["updatedAt", "password"] }
