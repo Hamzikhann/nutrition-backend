@@ -7,8 +7,8 @@ const { uploadFileToS3 } = require("../../utils/awsServises");
 exports.create = async (req, res) => {
 	try {
 		const schema = joi.object({
-			name: joi.string().required(),
-			description: joi.string().required()
+			name: joi.string().min(1).required().allow(null),
+			description: joi.string().min(1).required()
 		});
 		const { error, value } = schema.validate(req.body);
 		if (error) {

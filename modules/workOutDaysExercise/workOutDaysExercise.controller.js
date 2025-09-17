@@ -52,6 +52,57 @@ exports.list = async (req, res) => {
 	}
 };
 
+exports.detail = async (req, res) => {
+	try {
+		let workout = await Week.findOne({
+			where: {
+				id: crypto.decrypt(req.body.weekId)
+			},
+			include: [
+				{
+					model: WorkoutDays,
+					include: [
+						{
+							model: WorkOutDayExercises,
+							where: {
+								isActive: "Y",
+								weekId: crypto.decrypt(req.body.weekId)
+							},
+							include: [
+								{
+									model: Exercise,
+									attributes: {
+										exclude: ["createdAt", "updatedAt", "workoutDayId"]
+									}
+								}
+							],
+							attributes: {
+								exclude: ["createdAt", "updatedAt", "exerciseId", "weekId", "workoutDayId"]
+							}
+						}
+					],
+					attributes: {
+						exclude: ["createdAt", "updatedAt"]
+					}
+				}
+			],
+			attributes: {
+				exclude: ["createdAt", "updatedAt", "order", "planId"]
+			}
+		});
+		encryptHelper(workout);
+
+		return res.status(200).send({
+			message: "Work out day exercises listed successfully",
+			data: workout
+		});
+	} catch (err) {
+		return res.status(400).send({
+			message: err.message || "Some error occurred while listing the work out day exercises."
+		});
+	}
+};
+
 exports.create = async (req, res) => {
 	try {
 		const schema = joi.object({

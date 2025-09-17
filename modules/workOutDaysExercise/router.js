@@ -18,6 +18,16 @@ router.post("/list", (req, res) => {
 	workoutDayExercisesController.list(req, res);
 });
 
+router.post("/detail", (req, res) => {
+	if (req.role == "Administrator") {
+		workoutDayExercisesController.detail(req, res);
+	} else {
+		return res.status(400).send({
+			message: "Only Administrator can list weekId"
+		});
+	}
+});
+
 router.post("/list/weeks", (req, res) => {
 	if (req.role == "Administrator") {
 		workoutDayExercisesController.listWeeks(req, res);

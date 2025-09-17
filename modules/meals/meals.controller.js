@@ -70,7 +70,7 @@ exports.create = async (req, res) => {
 				image: videoUrl,
 				kcalOptions: kcalOptions,
 				categoryId: crypto.decrypt(category),
-				subCategoryId: crypto.decrypt(subCategory),
+				dishesCategoryId: crypto.decrypt(subCategory),
 				ingredientsDetails,
 				cookingSteps,
 				nutritionCalories,
