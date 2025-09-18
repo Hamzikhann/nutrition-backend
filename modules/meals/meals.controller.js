@@ -117,7 +117,7 @@ exports.list = async (req, res) => {
 			},
 			{
 				model: db.dishesCategories,
-				attributes: ["title"]
+				attributes: ["title", "image"]
 			}
 		];
 		console.log(crypto.decrypt(req.userId));

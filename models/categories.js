@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
 	table.associate = function (models) {
 		table.hasMany(models.dishesCategories);
 		table.hasMany(models.meals);
+		table.hasMany(models.mealPlaner);
 	};
 
 	return table;

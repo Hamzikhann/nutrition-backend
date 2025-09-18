@@ -40,6 +40,7 @@ module.exports = (sequelize, DataTypes) => {
 		table.hasOne(models.payments);
 		table.hasMany(models.userPlans);
 		table.hasMany(models.habitsCompletions);
+		table.hasMany(models.mealPlaner);
 	};
 	return table;
 };
