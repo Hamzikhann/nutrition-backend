@@ -135,10 +135,11 @@ exports.list = async (req, res) => {
 			include: [
 				{
 					model: DishesCategories,
+
 					include: [
 						{
 							model: Dishes,
-							required: false,
+							required: true,
 							// include: [
 							// 	{
 							// 		model: AssignedIngredients,

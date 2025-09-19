@@ -9,10 +9,12 @@ const CommunityPosts = db.communityPosts;
 const CommunityLikes = db.communityLikes;
 const CommunityLikesCounter = db.communitylikesCounter;
 const CommunityComments = db.communityComments;
+const User = db.users;
 exports.createCategory = async (req, res) => {
 	try {
 		const joiSchema = joi.object({
-			title: joi.string().required()
+			title: joi.string().required(),
+			privacy: joi.string().required()
 		});
 		const { error, value } = joiSchema.validate(req.body);
 		if (error) {
@@ -31,7 +33,8 @@ exports.createCategory = async (req, res) => {
 				});
 			}
 			const category = await CommunityCategories.create({
-				title: value.title
+				title: value.title,
+				privacy: value.privacy
 			});
 			encryptHelper(category);
 			res.status(200).json({
@@ -164,6 +167,78 @@ exports.listPosts = async (req, res) => {
 			message: "Posts list",
 			posts
 		});
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.detail = async (req, res) => {
+	try {
+		const joiSchema = joi.object({
+			categoryId: joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const category = await CommunityCategories.findOne({
+				where: {
+					id: crypto.decrypt(value.categoryId)
+				}
+			});
+			if (!category) {
+				return res.status(400).json({
+					message: "Category not found"
+				});
+			}
+			let posts = await CommunityPosts.findAll({
+				where: {
+					communityCategoryId: crypto.decrypt(value.categoryId)
+				},
+				include: [
+					{
+						model: CommunityLikes,
+						include: [
+							{
+								model: db.users,
+								attributes: ["id", "firstName", "lastName"],
+								include: [
+									{
+										model: db.roles,
+										attributes: ["title"]
+									}
+								]
+							}
+						]
+					},
+					{
+						model: User,
+						attributes: ["id", "firstName", "lastName"],
+
+						include: [{ model: db.roles, attributes: ["title"] }]
+					}
+				]
+			});
+
+			// Add comment counts manually
+			for (let post of posts) {
+				const count = await CommunityComments.count({
+					where: { communityPostId: post.id }
+				});
+				post.setDataValue("commentsCount", count);
+			}
+
+			encryptHelper(posts);
+			res.status(200).json({
+				message: "Posts detail",
+				posts
+			});
+		}
 	} catch (err) {
 		console.log(err);
 		res.status(500).json({

@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
 
 		{
 			title: DataTypes.STRING,
+			privacy:DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"

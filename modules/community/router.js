@@ -28,4 +28,7 @@ router.post("/list/posts", (req, res) => {
 	communityController.listPosts(req, res);
 });
 
+router.post("/detail", (req, res) => {
+	communityController.detail(req, res);
+});
 module.exports = router;
