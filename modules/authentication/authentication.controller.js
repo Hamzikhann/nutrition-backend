@@ -428,7 +428,7 @@ exports.verifyOtp = async (req, res) => {
 			encryptHelper(getUser);
 			return res.status(200).send({
 				message: "OTP verified successfully. Account pending activation.",
-				data: createdUser
+				data: getUser
 			});
 		}
 	} catch (err) {

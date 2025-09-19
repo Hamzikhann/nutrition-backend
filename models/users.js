@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
 			password: DataTypes.STRING,
 			imageURL: DataTypes.STRING,
 			fcmToken: DataTypes.TEXT,
-			isPaid: {
+			isPayment: {
 				type: DataTypes.STRING,
 				allowNull: false,
 				defaultValue: "N"
