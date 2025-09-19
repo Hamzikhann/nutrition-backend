@@ -397,6 +397,14 @@ exports.verifyOtp = async (req, res) => {
 					data: user
 				});
 			}
+		} else if (user.isActive == "Y") {
+			encryptHelper(user);
+
+			return res.status(401).send({
+				title: "User Active",
+				message: "User active, otp verified",
+				data: user
+			});
 		} else {
 			// Create new user if doesn't exist
 			let createdUser = await Users.create({
@@ -405,7 +413,19 @@ exports.verifyOtp = async (req, res) => {
 				isActive: "N",
 				roleId: 2 // Default role for new users
 			});
-			encryptHelper(createdUser);
+
+			let getUser = await Users.findOne({
+				where: {
+					id: createdUser.id
+				},
+				include: [
+					{
+						model: Roles
+					}
+				]
+			});
+
+			encryptHelper(getUser);
 			return res.status(200).send({
 				message: "OTP verified successfully. Account pending activation.",
 				data: createdUser
