@@ -396,15 +396,15 @@ exports.verifyOtp = async (req, res) => {
 					message: "User not active, please contact admin",
 					data: user
 				});
-			}
-		} else if (user.isActive == "Y") {
-			encryptHelper(user);
+			} else if (user.isActive == "Y") {
+				encryptHelper(user);
 
-			return res.status(401).send({
-				title: "User Active",
-				message: "User active, otp verified",
-				data: user
-			});
+				return res.status(401).send({
+					title: "User Active",
+					message: "User active, otp verified",
+					data: user
+				});
+			}
 		} else {
 			// Create new user if doesn't exist
 			let createdUser = await Users.create({
