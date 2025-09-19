@@ -20,3 +20,44 @@ exports.list = async (req, res) => {
 		});
 	}
 };
+
+exports.create = async (req, res) => {
+	try {
+		const joiSchema = joi.object({
+			name: joi.string().required(),
+			details: joi.string().required(),
+			duration: joi.string().required(),
+			price: joi.string().required(),
+			features: joi.array().required(),
+			isPopular: joi.string().optional(),
+			isFree: joi.string().optional()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			let planObj = {
+				name: req.body.name,
+				details: req.body.details,
+				duration: req.body.duration,
+				features: JSON.stringify(req.body.features),
+				isPopular: req.body.isPopular,
+				isFree: req.body.isFree,
+				price: req.body.price
+			};
+
+			let createPlan = await Plans.create(planObj);
+
+			encryptHelper(createPlan);
+
+			return res.status(200).send({ message: "Plan is Created", data: createPlan });
+		}
+	} catch (err) {
+		res.json({
+			success: false,
+			message: err.message
+		});
+	}
+};

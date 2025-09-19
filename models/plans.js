@@ -9,7 +9,8 @@ module.exports = (sequelize, DataTypes) => {
 			duration: DataTypes.STRING,
 			details: DataTypes.TEXT,
 			isFree: { type: DataTypes.STRING, defaultValue: "N", allowNull: false },
-
+			isPopular: DataTypes.STRING,
+			features: DataTypes.TEXT,
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,

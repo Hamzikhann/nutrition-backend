@@ -18,6 +18,8 @@ const communityLikesRouteHandler = require("../modules/communityLikes/router");
 const communityCommentsRouteHandler = require("../modules/communityComments/router");
 const mealsRouteHandler = require("../modules/meals/router");
 const mealPlanerRouteHandler = require("../modules/mealPlaner/router");
+const supplementsRouteHandler = require("../modules/supplements/router");
+
 class Routes {
 	constructor(app) {
 		this.app = app;
@@ -40,6 +42,7 @@ class Routes {
 		this.app.use("/api/communityComments", jwt.protect, communityCommentsRouteHandler);
 		this.app.use("/api/meals", jwt.protect, mealsRouteHandler);
 		this.app.use("/api/mealPlaner", jwt.protect, mealPlanerRouteHandler);
+		this.app.use("/api/supplements", jwt.protect, supplementsRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();
