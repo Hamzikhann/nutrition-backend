@@ -39,7 +39,7 @@ exports.login = async (req, res) => {
 						attributes: ["title"]
 					}
 				],
-				attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL", "isPaid", "isFormCreated"]
+				attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL", "isPayment", "isFormCreated"]
 			});
 			if (user) {
 				// if (req.body.fcmToken) {

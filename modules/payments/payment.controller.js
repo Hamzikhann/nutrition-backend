@@ -46,7 +46,7 @@ exports.create = async (req, res) => {
 				email: req.body.email,
 				phoneNo: req.body.phoneNo,
 				roleId: 2,
-				isPaid: "Y",
+				isPayment: "Y",
 				isActive: "N"
 			},
 			{

@@ -25,7 +25,7 @@ module.exports = {
 					email: "admin@gmail.com",
 					password: "admin123",
 					roleId: "1",
-					isPaid: "Y",
+					isPayment: "Y",
 
 					createdAt: date,
 					updatedAt: date
@@ -37,7 +37,7 @@ module.exports = {
 					email: "hamza@gmail.com",
 					password: "hamza123",
 					roleId: "2",
-					isPaid: "Y",
+					isPayment: "Y",
 
 					createdAt: date,
 					updatedAt: date
@@ -48,7 +48,7 @@ module.exports = {
 					email: "ali@gmail.com",
 					password: "ali123456",
 					roleId: "2",
-					isPaid: "N",
+					isPayment: "N",
 
 					createdAt: date,
 					updatedAt: date

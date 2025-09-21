@@ -117,7 +117,7 @@ exports.create = async (req, res) => {
 
 								let createTransection = await Payment.create(transactionObj, { transaction });
 								await transaction.commit();
-								let updateUser = await Users.update({ isPaid: "Y" }, { where: { id: user.id } });
+								let updateUser = await Users.update({ isPayment: "Y" }, { where: { id: user.id } });
 								encryptHelper(user);
 
 								res.status(200).send({
