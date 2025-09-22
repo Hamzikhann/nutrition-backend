@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
 	table.associate = function (models) {
 		table.belongsTo(models.workoutDays);
 		table.belongsTo(models.exercises);
+		table.hasMany(models.workoutsCompletions);
 	};
 
 	return table;

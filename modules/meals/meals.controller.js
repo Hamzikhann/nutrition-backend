@@ -25,7 +25,8 @@ exports.create = async (req, res) => {
 			nutritionProtein: Joi.string().optional(),
 			nutritionCarbs: Joi.string().optional(),
 			nutritionFat: Joi.string().optional(),
-			mealType: Joi.string().optional()
+			mealType: Joi.string().optional(),
+			note: Joi.string().optional()
 		});
 
 		const { error } = schema.validate(req.body);
@@ -45,7 +46,8 @@ exports.create = async (req, res) => {
 			nutritionProtein,
 			nutritionCarbs,
 			nutritionFat,
-			mealType
+			mealType,
+			note
 		} = req.body;
 
 		let videoUrl = null;
@@ -77,7 +79,8 @@ exports.create = async (req, res) => {
 				nutritionProtein,
 				nutritionCarbs,
 				nutritionFat,
-				mealTypeId: findMelaType.id
+				mealTypeId: findMelaType.id,
+				note
 			},
 			{ transaction: t }
 		);

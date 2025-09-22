@@ -1,10 +1,10 @@
-const { communityComments, users } = require("../../models");
+const { communityComments, users, communityPosts } = require("../../models");
 const Redis = require("ioredis");
 const redis = new Redis();
 const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
-
+const deepenclone = require("../../utils/deepencryptedIds");
 // TTL for cache in seconds
 const CACHE_TTL = 60;
 
@@ -23,6 +23,16 @@ exports.addComment = async (req, res) => {
 	let userId = crypto.decrypt(req.userId);
 	postId = crypto.decrypt(postId);
 	try {
+		let getPost = communityPosts.findOne({ where: { id: postId }, attributes: ["id", "access"] });
+
+		if (getPost.access == "false" && req.role != "Administrator") {
+			return res.status(400).json({ message: "You don't have permission to comment on this post" });
+		}
+
+		if (!getPost) {
+			return res.status(404).json({ message: "Post not found" });
+		}
+
 		const newComment = await communityComments.create({
 			communityPostId: postId,
 			userId,
@@ -52,7 +62,11 @@ exports.getComments = async (req, res) => {
 		if (cachedComments) {
 			// cachedComments = encryptHelper(cachedComments);
 			let parsedComments = JSON.parse(cachedComments);
-			encryptHelper(parsedComments);
+			// Convert plain objects back to expected structure
+			const structuredComments = parsedComments.map((comment) => ({
+				dataValues: comment
+			}));
+			encryptHelper(structuredComments);
 			return res.status(200).json({
 				message: "Comments list (from cache)",
 				comments: parsedComments

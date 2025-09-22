@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
 			nutritionProtein: DataTypes.STRING,
 			nutritionCarbs: DataTypes.STRING,
 			nutritionFat: DataTypes.STRING,
+			note: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"

@@ -384,3 +384,120 @@ exports.update = async (req, res) => {
 		});
 	}
 };
+
+exports.listv2 = async (req, res) => {
+	try {
+		let userId = crypto.decrypt(req.userId);
+		let whereClause = {};
+
+		if (userId == 1) {
+			whereClause = {
+				isActive: "Y"
+			};
+		} else {
+			whereClause = {
+				isActive: "Y",
+				userId: [1, userId] // global + personal habits
+			};
+		}
+
+		// Get user creation date
+		const user = await User.findByPk(userId);
+		const userCreatedAt = user ? new Date(user.createdAt) : new Date();
+
+		// Calculate days since user joined
+		const daysSinceUserJoined = Math.max(1, Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24)));
+
+		// Today’s date range
+		const todayStart = new Date();
+		todayStart.setHours(0, 0, 0, 0);
+
+		const todayEnd = new Date();
+		todayEnd.setHours(23, 59, 59, 999);
+
+		// Get all active habits
+		const habits = await Habits.findAll({
+			where: whereClause,
+			include: [{ model: HabitCompletions, required: false }]
+		});
+
+		// Only mandatory habits count for progress
+		const mandatoryHabits = habits.filter((h) => h.mandatory === "true");
+		const totalMandatoryHabits = mandatoryHabits.length;
+
+		// Prepare percentage map (default 0 if missing)
+		const habitPercentages = {};
+		mandatoryHabits.forEach((h) => {
+			habitPercentages[h.id] = h.percentage || 0;
+		});
+
+		// All completions
+		const allCompletions = await HabitCompletions.findAll({
+			where: {
+				habitId: mandatoryHabits.map((h) => h.id),
+				userId: userId,
+				status: "Completed"
+			}
+		});
+
+		// Today’s completions
+		const todayCompletions = await HabitCompletions.findAll({
+			where: {
+				habitId: mandatoryHabits.map((h) => h.id),
+				userId: userId,
+				status: "Completed",
+				updatedAt: {
+					[Op.between]: [todayStart, todayEnd]
+				}
+			}
+		});
+
+		// --- Weighted progress ---
+		let todayProgress = 0;
+		todayCompletions.forEach((c) => {
+			todayProgress += habitPercentages[c.habitId] || 0;
+		});
+
+		let overallProgress = 0;
+		allCompletions.forEach((c) => {
+			overallProgress += habitPercentages[c.habitId] || 0;
+		});
+
+		const totalPossibleOverall = daysSinceUserJoined * 100; // each day = 100 points
+		const overallPercentage = totalPossibleOverall > 0 ? Math.round((overallProgress / totalPossibleOverall) * 100) : 0;
+
+		const todayPercentage = Math.round(todayProgress); // already weighted %
+
+		encryptHelper(habits);
+
+		return res.status(200).send({
+			message: "Habit progress summary",
+			data: {
+				habits,
+				progress: {
+					overall: {
+						completed: overallProgress,
+						total: totalPossibleOverall,
+						percentage: Math.min(overallPercentage, 100)
+					},
+					today: {
+						completed: todayProgress,
+						total: 100,
+						percentage: Math.min(todayPercentage, 100)
+					}
+				},
+				summary: {
+					totalHabits: habits.length,
+					mandatoryHabits: totalMandatoryHabits,
+					daysSinceJoined: daysSinceUserJoined,
+					todayDate: new Date().toISOString().split("T")[0]
+				}
+			}
+		});
+	} catch (err) {
+		console.log(err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while fetching habit progress."
+		});
+	}
+};

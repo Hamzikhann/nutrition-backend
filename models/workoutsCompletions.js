@@ -2,24 +2,21 @@
 
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"communityCategories",
-
+		"workoutsCompletions",
 		{
-			title: DataTypes.STRING,
-			privacy: DataTypes.STRING,
-			members: DataTypes.STRING,
+			status: DataTypes.STRING,
+
 			isActive: {
 				type: DataTypes.STRING,
+				allowNull: false,
 				defaultValue: "Y"
 			}
 		},
 		{ timestamps: true }
 	);
-
 	table.associate = function (models) {
-		// If you have an Admin/User model, link here
-		table.hasMany(models.communityPosts);
+		table.belongsTo(models.workoutDayExercises);
+		table.belongsTo(models.users);
 	};
-
 	return table;
 };

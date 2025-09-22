@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
 			title: DataTypes.STRING,
 			content: DataTypes.TEXT,
 			image: DataTypes.STRING, // optional, for post images
+			access: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"

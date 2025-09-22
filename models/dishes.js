@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
 			ingredients: DataTypes.TEXT,
 			directions: DataTypes.TEXT,
 			nutritions: DataTypes.TEXT,
+			note: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				defaultValue: "Y"

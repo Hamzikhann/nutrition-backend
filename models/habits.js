@@ -12,6 +12,10 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.TEXT,
 				allowNull: true
 			},
+			percentage: {
+				type: DataTypes.INTEGER,
+				allowNull: true
+			},
 			status: {
 				type: DataTypes.STRING,
 				allowNull: false,

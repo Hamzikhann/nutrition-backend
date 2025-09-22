@@ -48,4 +48,8 @@ router.post("/list/workoutdays", (req, res) => {
 	}
 });
 
+router.post("/update/status", (req, res) => {
+	workoutDayExercisesController.updateStatus(req, res);
+});
+
 module.exports = router;

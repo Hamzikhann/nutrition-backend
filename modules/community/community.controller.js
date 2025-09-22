@@ -10,6 +10,7 @@ const CommunityLikes = db.communityLikes;
 const CommunityLikesCounter = db.communitylikesCounter;
 const CommunityComments = db.communityComments;
 const User = db.users;
+
 exports.createCategory = async (req, res) => {
 	try {
 		const joiSchema = joi.object({
@@ -55,7 +56,8 @@ exports.createPost = async (req, res) => {
 		const schema = joi.object({
 			categoryId: joi.string().required(),
 			title: joi.string().required(),
-			content: joi.string().required()
+			content: joi.string().required(),
+			access: joi.string().required()
 		});
 		const { error, value } = schema.validate(req.body);
 		if (error) {
@@ -66,11 +68,11 @@ exports.createPost = async (req, res) => {
 		const { categoryId, title, content } = value;
 		const userId = crypto.decrypt(req.userId);
 
-		if (!req.file) {
-			res.status(400).json({
-				message: "Image is required"
-			});
-		}
+		// if (!req.file) {
+		// 	res.status(400).json({
+		// 		message: "Image is required"
+		// 	});
+		// }
 		const category = await CommunityCategories.findOne({
 			where: {
 				id: crypto.decrypt(categoryId)
@@ -88,14 +90,17 @@ exports.createPost = async (req, res) => {
 				message: "Category not found"
 			});
 		}
-
-		const imageUrl = await uploadFileToS3(req.file, "/communityPosts");
+		let imageUrl = "";
+		if (req.file) {
+			imageUrl = await uploadFileToS3(req.file, "/communityPosts");
+		}
 
 		const post = await CommunityPosts.create({
 			communityCategoryId: crypto.decrypt(categoryId),
 			title,
 			content,
-			image: imageUrl,
+			image: imageUrl ? imageUrl : "",
+			access: value.access ? value.access == "true" : "false",
 			userId
 		});
 		encryptHelper(post);

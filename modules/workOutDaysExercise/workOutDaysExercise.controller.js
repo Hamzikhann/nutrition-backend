@@ -7,7 +7,7 @@ const Week = db.weeks;
 const WorkoutDays = db.workoutDays;
 const WorkOutDayExercises = db.workoutDayExercises;
 const Exercise = db.exercises;
-
+const WorkoutsCompletions = db.workoutsCompletions;
 exports.list = async (req, res) => {
 	try {
 		let workout = await Week.findAll({
@@ -23,6 +23,9 @@ exports.list = async (req, res) => {
 									attributes: {
 										exclude: ["createdAt", "updatedAt", "workoutDayId"]
 									}
+								},
+								{
+									model: WorkoutsCompletions
 								}
 							],
 							attributes: {
@@ -208,6 +211,56 @@ exports.listWorkOutDays = async (req, res) => {
 	} catch (err) {
 		return res.status(400).send({
 			message: err.message || "Some error occurred while listing the work out days."
+		});
+	}
+};
+
+exports.updateStatus = async (req, res) => {
+	try {
+		const schema = joi.object({
+			id: joi.string().required()
+		});
+		const { error, value } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const { id } = value;
+			const workOutDayExercise = await WorkOutDayExercises.findOne({
+				where: {
+					id: crypto.decrypt(id)
+				}
+			});
+			if (!workOutDayExercise) {
+				return res.status(400).send({
+					message: "Work out day exercise not found"
+				});
+			}
+			let findWorkoutCompleted = await WorkoutsCompletions.findOne({
+				where: {
+					workoutDayExerciseId: crypto.decrypt(id)
+				}
+			});
+
+			if (findWorkoutCompleted) {
+				return res.status(400).send({
+					message: "Work out day exercise already completed"
+				});
+			}
+			let updateWorkoutCompleted = await WorkoutsCompletions.create({
+				status: "Completed",
+				userId: crypto.decrypt(req.userId), //req.userId
+				workoutDayExerciseId: crypto.decrypt(id)
+			});
+
+			return res.status(200).send({
+				message: "Work out day exercise updated successfully"
+			});
+		}
+	} catch (err) {
+		return res.status(400).send({
+			message: err.message || "Some error occurred while updating the work out day exercise."
 		});
 	}
 };

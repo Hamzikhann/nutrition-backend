@@ -9,9 +9,13 @@ const { upload } = fileUpload("habits");
 router.post("/create", upload.single("image"), async (req, res) => {
 	await habitsController.create(req, res);
 });
+// router.post("/list", async (req, res) => {
+// 	await habitsController.list(req, res);
+// });
 router.post("/list", async (req, res) => {
-	await habitsController.list(req, res);
+	await habitsController.listv2(req, res);
 });
+
 router.post("/detail", async (req, res) => {
 	await habitsController.detail(req, res);
 });

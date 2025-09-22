@@ -24,7 +24,8 @@ exports.create = async (req, res) => {
 			nutritions: Joi.string().required(),
 			directions: Joi.string().required(),
 			categoryId: Joi.string().required(),
-			subCategoryId: Joi.string().required()
+			subCategoryId: Joi.string().required(),
+			note: Joi.string().optional()
 		});
 
 		console.log(req.body);
@@ -39,7 +40,7 @@ exports.create = async (req, res) => {
 		console.log(req.file);
 
 		// Parse JSON fields
-		let { title, ingredients, nutritions, directions, subCategoryId } = req.body;
+		let { title, ingredients, nutritions, directions, subCategoryId, note } = req.body;
 		// ingredients = JSON.parse(ingredients);
 		// nutrition = JSON.parse(nutrition);
 		// directions = JSON.parse(directions);
@@ -60,6 +61,7 @@ exports.create = async (req, res) => {
 				ingredients,
 				nutritions: nutritions,
 				directions,
+				note,
 				dishesCategoryId: crypto.decrypt(subCategoryId)
 			},
 			{ transaction: t }
