@@ -112,19 +112,18 @@ exports.list = async (req, res) => {
 		includeClause = [
 			{
 				model: db.mealTypes,
-				attributes: ["title"]
+				attributes: ["id", "title"]
 			},
 			{
 				model: db.categories,
-				attributes: ["title"]
+				attributes: ["id", "title"]
 			},
 			{
 				model: db.dishesCategories,
-				attributes: ["title", "image"],
+				attributes: ["id", "title", "image"],
 				required: true
 			}
 		];
-		console.log(crypto.decrypt(req.userId));
 		// For non-administrator users, filter by assigned meals
 		if (role !== "Administrator") {
 			includeClause.push({
@@ -164,8 +163,8 @@ exports.update = async (req, res) => {
 			title: Joi.string().optional(),
 			description: Joi.string().optional(),
 			video: Joi.any().optional(),
-			kcalOptions: Joi.array().items(Joi.number()).optional(),
-			planName: Joi.string().optional(),
+			kcalOptions: Joi.string().required(),
+			mealType: Joi.string().optional(),
 			category: Joi.string().optional(),
 			subCategory: Joi.string().optional(),
 			ingredientsDetails: Joi.string().optional(),
@@ -173,7 +172,8 @@ exports.update = async (req, res) => {
 			nutritionCalories: Joi.string().optional(),
 			nutritionProtein: Joi.string().optional(),
 			nutritionCarbs: Joi.string().optional(),
-			nutritionFat: Joi.string().optional()
+			nutritionFat: Joi.string().optional(),
+			note: Joi.string().optional()
 		});
 
 		const { error } = schema.validate(req.body);
@@ -208,7 +208,8 @@ exports.update = async (req, res) => {
 				nutritionCalories: req.body.nutritionCalories || meal.nutritionCalories,
 				nutritionProtein: req.body.nutritionProtein || meal.nutritionProtein,
 				nutritionCarbs: req.body.nutritionCarbs || meal.nutritionCarbs,
-				nutritionFat: req.body.nutritionFat || meal.nutritionFat
+				nutritionFat: req.body.nutritionFat || meal.nutritionFat,
+				note: req.body.note || meal.note
 			},
 			{ transaction: t }
 		);

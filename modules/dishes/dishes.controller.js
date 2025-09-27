@@ -67,51 +67,6 @@ exports.create = async (req, res) => {
 			{ transaction: t }
 		);
 
-		// const newIngredient = await Ingredients.create(
-		// 			{
-		// 				name:ingredients
-		// 			},
-		// 			{ transaction: t }
-		// 		);
-
-		// Handle Ingredients
-		// for (let i = 0; i < ingredients.length; i++) {
-		// 	const ingredient = ingredients[i];
-		// 	let ingredientId;
-
-		// 	if (ingredient.id) {
-		// 		ingredientId = crypto.decrypt(ingredient.id);
-		// 	} else {
-		// 		const newIngredient = await Ingredients.create(
-		// 			{
-		// 				name: ingredient.name
-		// 			},
-		// 			{ transaction: t }
-		// 		);
-		// 		ingredientId = newIngredient.id;
-		// 	}
-
-		// 	await AssignedIngredients.create(
-		// 		{
-		// 			dishId: dish.id,
-		// 			ingredientId: ingredientId
-		// 		},
-		// 		{ transaction: t }
-		// 	);
-		// }
-
-		// Nutrition
-		// await Nutrition.create(
-		// 	{
-		// 		calories:nutrition,
-		// 		dishId: dish.id
-		// 	},
-		// 	{ transaction: t }
-		// );
-
-		// // Directions
-		// await Directions.create({ directions, dishId: dish.id }, { transaction: t });
-
 		encryptHelper(dish);
 
 		// Commit transaction
@@ -133,7 +88,6 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
 	try {
 		const dishes = await Categories.findAll({
-			// where: { isActive: "Y" },
 			include: [
 				{
 					model: DishesCategories,
@@ -141,40 +95,11 @@ exports.list = async (req, res) => {
 					include: [
 						{
 							model: Dishes,
+							where: {
+								isActive: "Y"
+							},
 							required: true,
-							// include: [
-							// 	{
-							// 		model: AssignedIngredients,
-							// 		required: false,
-							// 		attributes: {
-							// 			exclude: ["name", "quantity", "createdAt", "updatedAt", "mealId"]
-							// 		},
 
-							// 		include: [
-							// 			{
-							// 				model: Ingredients,
-							// 				required: false,
-							// 				attributes: {
-							// 					exclude: ["createdAt", "updatedAt", "mealId"]
-							// 				}
-							// 			}
-							// 		]
-							// 	},
-							// 	{
-							// 		model: Nutrition,
-							// 		required: false,
-							// 		attributes: {
-							// 			exclude: ["createdAt", "updatedAt", "mealId"]
-							// 		}
-							// 	},
-							// 	{
-							// 		model: Directions,
-							// 		required: false,
-							// 		attributes: {
-							// 			exclude: ["createdAt", "updatedAt", "mealId"]
-							// 		}
-							// 	}
-							// ],
 							attributes: {
 								exclude: ["createdAt", "updatedAt", "mealId"]
 							}
@@ -323,6 +248,99 @@ exports.listCategory = async (req, res) => {
 		// emails.errorEmail(req, err);
 		return res.status(500).send({
 			message: err.message || "Some error occurred while fetching the dish category."
+		});
+	}
+};
+
+exports.update = async (req, res) => {
+	try {
+		const schema = Joi.object({
+			title: Joi.string().required(),
+			id: Joi.string().required(),
+			ingredients: Joi.string().required(), // stringified JSON
+			nutritions: Joi.string().required(),
+			directions: Joi.string().required(),
+			categoryId: Joi.string().required(),
+			subCategoryId: Joi.string().required(),
+			note: Joi.string().optional()
+		});
+
+		const { error, value } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			let updateObj = {
+				title: value.title,
+				// description:value.description,
+				ingredients: value.ingredients,
+				nutritions: value.nutritions,
+				directions: value.directions,
+				// categoryId: crypto.decrypt(value.categoryId),
+				dishesCategoryId: crypto.decrypt(value.subCategoryId),
+				note: value.note
+			};
+
+			if (req.file) {
+				const s3Key = await uploadFileToS3(req.file, `dishes`);
+				value.image = s3Key;
+			}
+
+			if (value.image) {
+				updateObj.image = value.image;
+			}
+
+			const dish = await Dishes.update(updateObj, {
+				where: { id: crypto.decrypt(value.id) }
+			});
+			encryptHelper(dish);
+			return res.status(200).send({
+				message: "Dish updated successfully",
+				data: dish
+			});
+		}
+	} catch (err) {
+		console.log(err);
+		// emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while updating the dish."
+		});
+	}
+};
+
+exports.delete = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			id: Joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			let dishId = crypto.decrypt(req.body.id);
+			let updateDish = await Dishes.update(
+				{
+					isActive: "N"
+				},
+				{
+					where: {
+						id: dishId
+					}
+				}
+			);
+			return res.status(200).send({
+				message: "Dish deleted successfully",
+				data: updateDish
+			});
+		}
+	} catch (err) {
+		console.log(err);
+		// emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while deleting the dish."
 		});
 	}
 };

@@ -83,6 +83,7 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
 	try {
 		const highlights = await Highlights.findAll({
+			where: { isActive: "Y" },
 			include: [
 				{
 					model: HighlightItems
@@ -147,6 +148,78 @@ exports.createHighlightItem = async (req, res) => {
 			return res.status(200).send({
 				message: "Highlight item created successfully.",
 				data: createHighlightItem
+			});
+		}
+	} catch (error) {
+		return res.status(500).send({
+			message: error.message
+		});
+	}
+};
+
+exports.update = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			highlightId: Joi.string().required(),
+			title: Joi.string().optional()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			let userId = crypto.decrypt(req.userId);
+			let highlightId = crypto.decrypt(req.body.highlightId);
+			let updateHighligh = await Highlights.update(
+				{
+					title: req.body.title
+				},
+				{
+					where: {
+						id: highlightId,
+						userId: userId
+					}
+				}
+			);
+
+			return res.status(200).send({
+				message: "Highlight item updated successfully.",
+				data: updateHighligh
+			});
+		}
+	} catch (error) {
+		return res.status(500).send({
+			message: error.message
+		});
+	}
+};
+
+exports.delete = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			id: Joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			let highlightId = crypto.decrypt(req.body.id);
+			let updateHighligh = await Highlights.update(
+				{
+					isActive: "N"
+				},
+				{
+					where: {
+						id: highlightId
+					}
+				}
+			);
+			return res.status(200).send({
+				message: "Highlight item deleted successfully.",
+				data: updateHighligh
 			});
 		}
 	} catch (error) {

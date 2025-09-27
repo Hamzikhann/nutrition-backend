@@ -48,4 +48,24 @@ router.post("/list/category", async (req, res) => {
 	}
 });
 
+router.post("/update", upload.single("image"), async (req, res) => {
+	if (req.role == "Administrator") {
+		await dishesController.update(req, res);
+	} else {
+		return res.status(400).send({
+			message: "You are not authorized to update a dish"
+		});
+	}
+});
+
+router.post("/delete", async (req, res) => {
+	if (req.role == "Administrator") {
+		await dishesController.delete(req, res);
+	} else {
+		return res.status(400).send({
+			message: "You are not authorized to delete a dish"
+		});
+	}
+});
+
 module.exports = router;

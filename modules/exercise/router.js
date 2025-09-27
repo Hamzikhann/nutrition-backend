@@ -26,4 +26,24 @@ router.post("/list", (req, res) => {
 	}
 });
 
+router.post("/update", upload.single("video"), (req, res) => {
+	if (req.role == "Administrator") {
+		exerciseController.update(req, res);
+	} else {
+		return res.status(403).send({
+			message: "You are not authorized to perform this action"
+		});
+	}
+});
+
+router.post("/delete", (req, res) => {
+	if (req.role == "Administrator") {
+		exerciseController.delete(req, res);
+	} else {
+		return res.status(403).send({
+			message: "You are not authorized to perform this action"
+		});
+	}
+});
+
 module.exports = router;

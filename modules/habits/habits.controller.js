@@ -311,7 +311,7 @@ exports.detail = async (req, res) => {
 exports.delete = async (req, res) => {
 	try {
 		const schema = Joi.object({
-			id: Joi.number().required()
+			id: Joi.string().required()
 		});
 		const { error, value } = schema.validate(req.body);
 		if (error) {
@@ -326,7 +326,7 @@ exports.delete = async (req, res) => {
 				},
 				{
 					where: {
-						id
+						id: crypto.decrypt(id)
 					}
 				}
 			);
@@ -347,7 +347,7 @@ exports.delete = async (req, res) => {
 exports.update = async (req, res) => {
 	try {
 		const schema = Joi.object({
-			id: Joi.number().required(),
+			id: Joi.string().required(),
 			name: Joi.string().required(),
 			description: Joi.string().required(),
 			mandatory: Joi.string().required()
@@ -367,7 +367,7 @@ exports.update = async (req, res) => {
 				},
 				{
 					where: {
-						id
+						id: crypto.decrypt(id)
 					}
 				}
 			);

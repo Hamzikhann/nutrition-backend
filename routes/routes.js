@@ -20,6 +20,7 @@ const mealsRouteHandler = require("../modules/meals/router");
 const mealPlanerRouteHandler = require("../modules/mealPlaner/router");
 const supplementsRouteHandler = require("../modules/supplements/router");
 const dashboardRouteHandler = require("../modules/dashboard/router");
+const paymentTypesRouteHandler = require("../modules/paymentTypes/router");
 
 class Routes {
 	constructor(app) {
@@ -45,6 +46,7 @@ class Routes {
 		this.app.use("/api/mealPlaner", jwt.protect, mealPlanerRouteHandler);
 		this.app.use("/api/supplements", jwt.protect, supplementsRouteHandler);
 		this.app.use("/api/dashboard", jwt.protect, dashboardRouteHandler);
+		this.app.use("/api/paymentTypes", jwt.protect, paymentTypesRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();
