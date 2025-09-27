@@ -262,11 +262,12 @@ exports.update = async (req, res) => {
 			directions: Joi.string().required(),
 			categoryId: Joi.string().required(),
 			subCategoryId: Joi.string().required(),
-			note: Joi.string().optional()
+			note: Joi.string().optional().allow("").allow(null)
 		});
 
 		const { error, value } = schema.validate(req.body);
 		if (error) {
+			console.log(error);
 			return res.status(400).send({
 				message: error.details[0].message
 			});
@@ -281,7 +282,7 @@ exports.update = async (req, res) => {
 				dishesCategoryId: crypto.decrypt(value.subCategoryId),
 				note: value.note
 			};
-
+			console.log(updateObj);
 			if (req.file) {
 				const s3Key = await uploadFileToS3(req.file, `dishes`);
 				value.image = s3Key;

@@ -19,7 +19,7 @@ router.post("/list", async (req, res) => {
 router.post("/detail", async (req, res) => {
 	await habitsController.detail(req, res);
 });
-router.post("/update", async (req, res) => {
+router.post("/update", upload.single("image"), async (req, res) => {
 	if (req.role == "Administrator") {
 		await habitsController.update(req, res);
 	} else {

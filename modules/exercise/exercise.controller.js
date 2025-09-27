@@ -123,15 +123,23 @@ exports.delete = async (req, res) => {
 				});
 			}
 
-			const wde = await WorkoutDayExercises.findOne({
+			const wde = await WorkoutDayExercises.findAll({
 				where: {
 					exerciseId: crypto.decrypt(id)
 				}
 			});
-			if (wde) {
-				const updateWorkoutDayExercises = await wde.update({
-					isActive: "N"
-				});
+			if (wde.length > 0) {
+				await WorkoutDayExercises.update(
+					{ isActive: "N" },
+					{
+						where: {
+							exerciseId: crypto.decrypt(id)
+						}
+					}
+				);
+				// const updateWorkoutDayExercises = await wde.update({
+				// 	isActive: "N"
+				// });
 			}
 
 			await exercise.update({

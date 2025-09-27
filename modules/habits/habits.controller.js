@@ -359,11 +359,22 @@ exports.update = async (req, res) => {
 			});
 		} else {
 			const { id, name, description, mandatory } = value;
+
+			const getHabit = await Habits.findOne({
+				where: {
+					id: crypto.decrypt(id)
+				}
+			});
+
+			if (req.file) {
+				var s3Key = await uploadFileToS3(req.file, "habits");
+			}
 			const habit = await Habits.update(
 				{
 					name,
 					description,
-					mandatory
+					mandatory,
+					image: req.file ? s3Key : getHabit.image
 				},
 				{
 					where: {

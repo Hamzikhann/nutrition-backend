@@ -18,7 +18,7 @@ router.post("/list", async (req, res) => {
 	await mealsController.list(req, res);
 });
 
-router.post("/update", upload.single("video"), async (req, res) => {
+router.post("/update", upload.single("image"), async (req, res) => {
 	if (req.role == "Administrator") {
 		await mealsController.update(req, res);
 	} else {
