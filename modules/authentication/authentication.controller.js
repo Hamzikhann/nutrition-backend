@@ -39,7 +39,17 @@ exports.login = async (req, res) => {
 						attributes: ["title"]
 					}
 				],
-				attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL", "isPayment", "isFormCreated"]
+				attributes: [
+					"id",
+					"firstName",
+					"lastName",
+					"email",
+					"roleId",
+					"phoneNo",
+					"imageURL",
+					"isPayment",
+					"isFormCreated"
+				]
 			});
 			if (user) {
 				// if (req.body.fcmToken) {
@@ -385,6 +395,8 @@ exports.verifyOtp = async (req, res) => {
 				}
 			]
 		});
+
+		console.log(user);
 
 		// Handle different user states
 		if (user) {

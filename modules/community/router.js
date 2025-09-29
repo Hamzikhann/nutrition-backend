@@ -31,4 +31,15 @@ router.post("/list/posts", (req, res) => {
 router.post("/detail", (req, res) => {
 	communityController.detail(req, res);
 });
+
+router.post("/delete/post", (req, res) => {
+	if (req.role == "Administrator") {
+		communityController.deletePost(req, res);
+	} else {
+		return res.status(403).json({
+			message: "You are not authorized to delete a post"
+		});
+	}
+});
+
 module.exports = router;

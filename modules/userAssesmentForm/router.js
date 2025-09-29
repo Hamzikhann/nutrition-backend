@@ -9,8 +9,7 @@ const userAssesmentFormController = require("./userAssesmentForm.controller");
 router.post(
 	"/create",
 	upload.fields([
-		{ name: "media", maxCount: 10 }, // For assessment files
-		{ name: "image", maxCount: 1 } // For payment screenshot
+		{ name: "media", maxCount: 10 } // For assessment files
 	]),
 	(req, res) => {
 		userAssesmentFormController.create(req, res);

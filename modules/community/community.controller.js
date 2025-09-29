@@ -251,3 +251,48 @@ exports.detail = async (req, res) => {
 		});
 	}
 };
+
+exports.deletePost = async (req, res) => {
+	try {
+		const joiSchema = joi.object({
+			postId: joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const post = await CommunityPosts.findOne({
+				where: {
+					id: crypto.decrypt(value.postId)
+				}
+			});
+			if (!post) {
+				return res.status(400).json({
+					message: "Post not found"
+				});
+			}
+
+			await CommunityPosts.update(
+				{
+					isActive: "N"
+				},
+				{
+					where: {
+						id: crypto.decrypt(value.postId)
+					}
+				}
+			);
+
+			return res.status(200).json({
+				message: "Post deleted successfully"
+			});
+		}
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Internal server error"
+		});
+	}
+};
