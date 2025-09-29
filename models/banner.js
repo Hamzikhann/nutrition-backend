@@ -2,20 +2,20 @@
 
 module.exports = (sequelize, DataTypes) => {
 	const table = sequelize.define(
-		"supplementsCategories",
+		"banners",
+
 		{
-			title: DataTypes.STRING,
+			image: DataTypes.TEXT,
+			link: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
-				allowNull: false,
 				defaultValue: "Y"
 			}
 		},
 		{ timestamps: true }
 	);
-	table.associate = function (models) {
-		table.hasMany(models.supplements);
-		table.hasMany(models.assignedSupplements);
-	};
+
+	table.associate = function (models) {};
+
 	return table;
 };

@@ -8,6 +8,7 @@ const WorkoutDays = db.workoutDays;
 const WorkOutDayExercises = db.workoutDayExercises;
 const Exercise = db.exercises;
 const WorkoutsCompletions = db.workoutsCompletions;
+const Plan = db.plans;
 exports.list = async (req, res) => {
 	try {
 		let workout = await Week.findAll({
@@ -261,6 +262,87 @@ exports.updateStatus = async (req, res) => {
 	} catch (err) {
 		return res.status(400).send({
 			message: err.message || "Some error occurred while updating the work out day exercise."
+		});
+	}
+};
+
+function convertDurationToWeeks(duration) {
+	// duration examples: "6 months", "4 months", "1 month", "12 days"
+	const parts = duration.toLowerCase().split(" ");
+
+	if (parts.length < 2) return 0; // invalid format
+
+	const value = parseInt(parts[0], 10);
+	const unit = parts[1];
+
+	if (isNaN(value)) return 0;
+
+	if (unit.startsWith("month")) {
+		return value * 4; // approx 4 weeks per month
+	} else if (unit.startsWith("day")) {
+		return Math.floor(value / 7); // convert days to weeks
+	} else if (unit.startsWith("week")) {
+		return value; // already in weeks
+	}
+	return 0;
+}
+
+exports.createWeek = async (req, res) => {
+	try {
+		const schema = joi.object({
+			planId: joi.string().min(1).required(),
+			numberOfWeeks: joi.number().min(1).required()
+		});
+		const { error } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({ message: error.details[0].message });
+		}
+
+		// Decrypt planId
+		let planId = crypto.decrypt(req.body.planId);
+
+		// Find plan details
+		const plan = await Plan.findOne({ where: { id: planId } });
+		if (!plan) {
+			return res.status(404).send({ message: "Plan not found" });
+		}
+
+		// Convert plan duration into weeks
+		const planWeeks = convertDurationToWeeks(plan.duration);
+		const { numberOfWeeks } = req.body;
+
+		if (numberOfWeeks > planWeeks) {
+			return res.status(400).send({
+				message: `Selected number of weeks (${numberOfWeeks}) exceeds plan duration (${planWeeks} weeks)`
+			});
+		}
+
+		// Create weeks and their workout days
+		let createdWeeks = [];
+		for (let i = 1; i <= numberOfWeeks; i++) {
+			const week = await Week.create({
+				title: `Week ${i}`,
+				planId
+			});
+
+			const days = Array.from({ length: 5 }, (_, idx) => ({
+				dayNumber: idx + 1,
+				title: `Workout Day ${idx + 1}`,
+				weekId: week.id
+			}));
+
+			await WorkoutDays.bulkCreate(days);
+			encryptHelper(week);
+			createdWeeks.push(week);
+		}
+
+		return res.status(200).send({
+			message: "Weeks and workout days created successfully",
+			data: createdWeeks
+		});
+	} catch (err) {
+		return res.status(400).send({
+			message: err.message || "Some error occurred while creating weeks."
 		});
 	}
 };

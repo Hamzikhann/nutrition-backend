@@ -3,6 +3,7 @@ const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
 const joi = require("joi");
 const { uploadFileToS3 } = require("../../utils/awsServises");
+const { Op } = require("sequelize");
 
 const CommunityCategories = db.communityCategories;
 const CommunityPosts = db.communityPosts;
@@ -57,7 +58,7 @@ exports.createPost = async (req, res) => {
 			categoryId: joi.string().required(),
 			title: joi.string().required(),
 			content: joi.string().required(),
-			access: joi.string().required()
+			access: joi.string().optional().allow("").allow(null)
 		});
 		const { error, value } = schema.validate(req.body);
 		if (error) {
@@ -134,10 +135,28 @@ exports.listCategories = async (req, res) => {
 
 exports.listPosts = async (req, res) => {
 	try {
+		// Expecting a query param or body param: YYYY-MM-DD
+		const { date } = req.body; // or req.body
+
+		let whereCondition = { isActive: "Y" };
+		if (date) {
+			// Normalize to cover the whole day
+			const startOfDay = new Date(date);
+			startOfDay.setHours(0, 0, 0, 0);
+
+			const endOfDay = new Date(date);
+			endOfDay.setHours(23, 59, 59, 999);
+
+			whereCondition.createdAt = {
+				[Op.between]: [startOfDay, endOfDay]
+			};
+		}
+
 		const posts = await CommunityCategories.findAll({
 			include: [
 				{
 					model: CommunityPosts,
+					where: whereCondition, // ✅ filter posts by date
 					include: [
 						{
 							model: CommunityLikes, // all user reactions
@@ -158,9 +177,6 @@ exports.listPosts = async (req, res) => {
 							model: CommunityLikesCounter, // aggregated counters
 							attributes: ["reactionType", "count"]
 						}
-						// {
-						// 	model: CommunityComments
-						// }
 					]
 				}
 			]
@@ -203,7 +219,8 @@ exports.detail = async (req, res) => {
 			}
 			let posts = await CommunityPosts.findAll({
 				where: {
-					communityCategoryId: crypto.decrypt(value.categoryId)
+					communityCategoryId: crypto.decrypt(value.categoryId),
+					isActive: "Y"
 				},
 				include: [
 					{

@@ -45,33 +45,38 @@ exports.create = async (req, res) => {
 			name: joi.string().required(),
 			userId: joi.string().required(),
 			email: joi.string().required(),
-			country: joi.string().optional(),
-			whatsAppContact: joi.string().optional(),
-			martialStatus: joi.string().optional(),
-			weight: joi.string().optional(),
-			height: joi.string().optional(),
-			age: joi.string().optional(),
-			physicalActivity: joi.string().optional(),
-			purpose: joi.string().optional(),
-			pocsDuration: joi.string().optional(),
-			pcosSymptoms: joi.string().optional(),
-			medicalHistory: joi.string().optional(),
-			lastPeriods: joi.string().optional(),
-			medicalConditions: joi.string().required(),
-			medicines: joi.string().required(),
-			ultrasoundHormonalTests: joi.string().required(),
-			breakfastOptions: joi.string().required(),
-			lunchOptions: joi.string().required(),
-			dinnerOptions: joi.string().required(),
-			snacksOptions: joi.string().required(),
-			meals: joi.string().required()
+			country: joi.string().optional().allow("").allow(null),
+			whatsAppContact: joi.string().optional().allow("").allow(null),
+			maritalStatus: joi.string().optional().allow("").allow(null),
+			weight: joi.string().required(),
+			height: joi.string().required(),
+			age: joi.string().required(),
+			physicalActivity: joi.string().optional().allow("").allow(null),
+			purpose: joi.string().optional().allow("").allow(null),
+			pcosDuration: joi.string().optional().allow("").allow(null),
+			pcosSymptoms: joi.string().optional().allow("").allow(null),
+			// medicalHistory: joi.string().optional(),
+			// lastPeriods: joi.string().optional(),
+			medicalConditions: joi.string().optional().allow("").allow(null),
+			medicines: joi.string().optional().allow("").allow(null),
+			ultrasoundHormonalTests: joi.string().optional().allow("").allow(null),
+			breakfastOptions: joi.string().optional().allow("").allow(null),
+			lunchOptions: joi.string().optional().allow("").allow(null),
+			dinnerOptions: joi.string().optional().allow("").allow(null),
+			snacksOptions: joi.string().optional().allow("").allow(null),
+			additionalDetails: joi.string().optional().allow("").allow(null),
+			periodDetails: joi.string().optional().allow("").allow(null),
+			supplements: joi.string().optional().allow("").allow(null),
+			working: joi.string().optional().allow("").allow(null),
+			meals: joi.string().optional().allow("").allow(null)
 		});
-
+		console.log(req.body);
 		const { error } = schema.validate(req.body);
 		if (error) {
+			console.log(error);
 			return res.status(400).send({ message: error.details[0].message });
 		}
-
+		console.log(req.body);
 		const userId = crypto.decrypt(req.body.userId);
 		// Create form payload
 		const formPayload = {
@@ -79,13 +84,13 @@ exports.create = async (req, res) => {
 			email: req.body.email ? req.body.email : "",
 			country: req.body.country ? req.body.country : "",
 			whatsAppContact: req.body.whatsAppContact ? req.body.whatsAppContact : "",
-			martialStatus: req.body.martialStatus ? req.body.martialStatus : "",
+			martialStatus: req.body.maritalStatus ? req.body.maritalStatus : "",
 			weight: req.body.weight ? req.body.weight : "",
 			height: req.body.height ? req.body.height : "",
 			age: req.body.age ? req.body.age : "",
-			physicalActivity: req.body.physicalActivity ? JSON.stringify(req.body.physicalActivity) : "",
+			physicalActivity: req.body.physicalActivity ? req.body.physicalActivity : "",
 			purpose: req.body.purpose ? req.body.purpose : "",
-			pocsDuration: req.body.pocsDuration ? req.body.pocsDuration : "",
+			pocsDuration: req.body.pcosDuration ? req.body.pcosDuration : "",
 			pcosSymptoms: req.body.pcosSymptoms ? req.body.pcosSymptoms : "",
 			medicalHistory: req.body.medicalHistory ? req.body.medicalHistory : "",
 			lastPeriods: req.body.lastPeriods ? req.body.lastPeriods : "",
@@ -103,10 +108,13 @@ exports.create = async (req, res) => {
 
 		// Create main form
 		const userAssessmentFormData = await UserAssesmentForm.create(formPayload, { transaction: t });
-
+		if (userAssessmentFormData) {
+			console.log(userAssessmentFormData.id);
+		}
 		// Handle assessment files (media)
-		if (req.files && req.files["media"] && Array.isArray(req.files["media"])) {
-			for (let file of req.files["media"]) {
+		if (req.files) {
+			console.log("filesssss", req.files["media"]);
+			for (let file of req.files) {
 				const s3Key = await uploadFileToS3(file, `userAssesmentForm/${userId}/assessment`);
 
 				await UserAssesmentFormFiles.create(
@@ -121,7 +129,7 @@ exports.create = async (req, res) => {
 				);
 			}
 		}
-
+		console.log(req.body.weight, req.body.height, req.body.age);
 		// Calculate kcal plan and assign meals
 		const { bmr, adjustedBmr, kcalPlan } = calculateKcalPlan(req.body.weight, req.body.height, req.body.age);
 		console.log(kcalPlan);
@@ -153,7 +161,12 @@ exports.create = async (req, res) => {
 
 		// Commit before fetching complete data
 		await t.commit();
-		let updateuser = await db.users.update({ isFormCreated: "Y" }, { where: { id: userId } });
+		let updateuser = await db.users.update(
+			{
+				isFormCreated: "Y"
+			},
+			{ where: { id: userId } }
+		);
 		// Fetch complete data with associations if needed
 		const completeData = await UserAssesmentForm.findOne({
 			where: { id: userAssessmentFormData.id },
@@ -161,25 +174,25 @@ exports.create = async (req, res) => {
 				{
 					model: UserAssesmentFormFiles,
 					required: false
-				},
-				{
-					model: AssignedMeals,
-					include: [
-						{
-							model: Meals,
-							include: [
-								{
-									model: MealsType,
-									attributes: ["title"]
-								},
-								{
-									model: Categories,
-									attributes: ["title"]
-								}
-							]
-						}
-					]
 				}
+				// {
+				// 	model: AssignedMeals,
+				// 	include: [
+				// 		{
+				// 			model: Meals,
+				// 			include: [
+				// 				{
+				// 					model: MealsType,
+				// 					attributes: ["title"]
+				// 				},
+				// 				{
+				// 					model: Categories,
+				// 					attributes: ["title"]
+				// 				}
+				// 			]
+				// 		}
+				// 	]
+				// }
 			]
 		});
 

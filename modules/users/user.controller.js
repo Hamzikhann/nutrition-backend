@@ -16,8 +16,11 @@ const Plan = db.plans;
 const Payment = db.payments;
 const UserPlans = db.userPlans;
 const UserAssesmentForm = db.userAssesmentForm;
+
 const UserAssesmentFormFiles = db.userAssesmentFormFiles;
 
+const SupplementsCategories = db.supplementsCategories;
+const AssignedSupplements = db.assignedSupplements;
 exports.updateStatus = async (req, res) => {
 	try {
 		const joiSchema = Joi.object({
@@ -371,6 +374,14 @@ exports.listUsers = (req, res) => {
 					where: { isActive: "Y" },
 					required: false,
 					include: [{ model: UserAssesmentFormFiles }]
+				},
+				{
+					model: AssignedSupplements,
+					inlude: [
+						{
+							model: SupplementsCategories
+						}
+					]
 				}
 			],
 			attributes: { exclude: ["updatedAt", "password"] }

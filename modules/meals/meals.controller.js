@@ -160,20 +160,20 @@ exports.update = async (req, res) => {
 	try {
 		const schema = Joi.object({
 			id: Joi.string().required(),
-			title: Joi.string().optional(),
-			description: Joi.string().optional(),
-			video: Joi.any().optional(),
-			kcalOptions: Joi.string().required(),
-			mealType: Joi.string().optional(),
-			category: Joi.string().optional(),
-			subCategory: Joi.string().optional(),
-			ingredientsDetails: Joi.string().optional(),
-			cookingSteps: Joi.string().optional(),
-			nutritionCalories: Joi.string().optional(),
-			nutritionProtein: Joi.string().optional(),
-			nutritionCarbs: Joi.string().optional(),
-			nutritionFat: Joi.string().optional(),
-			note: Joi.string().optional()
+			title: Joi.string().optional().allow("").allow(null),
+			description: Joi.string().optional().allow("").allow(null),
+			video: Joi.any().optional().allow("").allow(null),
+			kcalOptions: Joi.string().required().allow("").allow(null),
+			mealType: Joi.string().optional().allow("").allow(null),
+			category: Joi.string().optional().allow("").allow(null),
+			subCategory: Joi.string().optional().allow("").allow(null),
+			ingredientsDetails: Joi.string().optional().allow("").allow(null),
+			cookingSteps: Joi.string().optional().allow("").allow(null),
+			nutritionCalories: Joi.string().optional().allow("").allow(null),
+			nutritionProtein: Joi.string().optional().allow("").allow(null),
+			nutritionCarbs: Joi.string().optional().allow("").allow(null),
+			nutritionFat: Joi.string().optional().allow("").allow(null),
+			note: Joi.string().optional().allow("").allow(null)
 		});
 
 		const { error } = schema.validate(req.body);

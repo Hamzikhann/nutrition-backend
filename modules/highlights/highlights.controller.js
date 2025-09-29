@@ -86,7 +86,8 @@ exports.list = async (req, res) => {
 			where: { isActive: "Y" },
 			include: [
 				{
-					model: HighlightItems
+					model: HighlightItems,
+					where: { isActive: "Y" }
 				}
 			]
 		});
@@ -214,6 +215,86 @@ exports.delete = async (req, res) => {
 				{
 					where: {
 						id: highlightId
+					}
+				}
+			);
+			return res.status(200).send({
+				message: "Highlight item deleted successfully.",
+				data: updateHighligh
+			});
+		}
+	} catch (error) {
+		return res.status(500).send({
+			message: error.message
+		});
+	}
+};
+
+exports.updateHighlightItem = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			highlightItemId: Joi.string().required(),
+			caption: Joi.string().optional(),
+			duration: Joi.string().optional()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			let userId = crypto.decrypt(req.userId);
+			let highlightItemId = crypto.decrypt(req.body.highlightItemId);
+			let updateObj = {
+				caption: req.body.caption,
+				duration: req.body.duration
+			};
+
+			if (req.file) {
+				var s3Key = await uploadFileToS3(
+					req.file,
+					`highlights/${userId}` // Organize by user ID
+				);
+				updateObj.mediaUrl = s3Key;
+			}
+
+			let updateHighlightItem = await HighlightItems.update(updateObj, {
+				where: {
+					id: highlightItemId
+				}
+			});
+
+			return res.status(200).send({
+				message: "Highlight item updated successfully.",
+				data: updateHighlightItem
+			});
+		}
+	} catch (error) {
+		return res.status(500).send({
+			message: error.message
+		});
+	}
+};
+
+exports.deleteHighlightItem = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			id: Joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			let highlightItemId = crypto.decrypt(req.body.id);
+			let updateHighligh = await HighlightItems.update(
+				{
+					isActive: "N"
+				},
+				{
+					where: {
+						id: highlightItemId
 					}
 				}
 			);

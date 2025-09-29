@@ -41,4 +41,20 @@ router.post("/delete", (req, res) => {
 	}
 });
 
+router.post("/update/item", upload.single("media"), (req, res) => {
+	if (req.role == "Administrator") {
+		highlightsController.updateHighlightItem(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
+});
+
+router.post("/delete/item", (req, res) => {
+	if (req.role == "Administrator") {
+		highlightsController.deleteHighlightItem(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
+});
+
 module.exports = router;

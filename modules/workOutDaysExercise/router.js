@@ -52,4 +52,14 @@ router.post("/update/status", (req, res) => {
 	workoutDayExercisesController.updateStatus(req, res);
 });
 
+router.post("/create/week", (req, res) => {
+	if (req.role == "Administrator") {
+		workoutDayExercisesController.createWeek(req, res);
+	} else {
+		return res.status(400).send({
+			message: "Only Administrator can create week"
+		});
+	}
+});
+
 module.exports = router;

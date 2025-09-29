@@ -22,7 +22,8 @@ exports.create = async (req, res) => {
 			paymentMethod: joi.string().required(),
 			currency: joi.string().required(),
 			paymentIntentId: joi.string().required(),
-			planId: joi.string().required()
+			planId: joi.string().required(),
+			userId: joi.string().required()
 		});
 
 		const { error } = schema.validate(req.body);
@@ -32,7 +33,7 @@ exports.create = async (req, res) => {
 		}
 
 		const { amount, paymentMethod, currency, paymentIntentId } = req.body;
-
+		console.log(req.body);
 		if (!req.file) {
 			await t.rollback();
 			return res.status(400).send({
@@ -41,21 +42,33 @@ exports.create = async (req, res) => {
 			});
 		}
 
-		const createUser = await User.create(
-			{
-				email: req.body.email,
-				phoneNo: req.body.phoneNo,
-				roleId: 2,
-				isPayment: "Y",
-				isActive: "N"
-			},
-			{
-				transaction: t
-			}
-		);
+		let userId = crypto.decrypt(req.body.userId); //req.userId
+		console.log(userId);
+		if (userId == null) {
+			return res.status(400).send({
+				success: false,
+				message: "User not found"
+			});
+		}
+
+		let existedUser = await User.findOne({
+			where: { id: userId }
+		});
 
 		const file = req.file;
 		const fileUrl = await uploadFileToS3(file, "payments");
+
+		const updateUser = await User.update(
+			{
+				isPayment: "Y"
+			},
+			{
+				where: {
+					id: userId
+				},
+				transaction: t
+			}
+		);
 
 		const payment = await Payment.create(
 			{
@@ -63,7 +76,8 @@ exports.create = async (req, res) => {
 				paymentMethod,
 				currency,
 				paymentIntentId,
-				image: fileUrl
+				image: fileUrl,
+				userId
 			},
 			{
 				transaction: t
@@ -72,7 +86,7 @@ exports.create = async (req, res) => {
 
 		await UserPlans.create(
 			{
-				userId: createUser.id,
+				userId: existedUser.id,
 				planId: crypto.decrypt(req.body.planId),
 				isActive: "Y"
 			},
@@ -82,18 +96,12 @@ exports.create = async (req, res) => {
 		);
 
 		await t.commit();
-
+		console.log(existedUser.id);
 		const getUser = await User.findOne({
 			where: {
-				id: createUser.id
+				id: existedUser.id
 			},
-			include: [
-				{
-					model: UserPlans,
-					include: [Plans]
-				},
-				{ model: Roles }
-			]
+			include: [{ model: Roles }]
 		});
 
 		encryptHelper(getUser);
@@ -104,7 +112,7 @@ exports.create = async (req, res) => {
 			data: getUser
 		});
 	} catch (error) {
-		await t.rollback();
+		// await t.rollback();
 		console.error("Error in create:", error);
 
 		return res.status(500).json({
