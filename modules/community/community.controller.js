@@ -3,6 +3,8 @@ const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
 const joi = require("joi");
 const { uploadFileToS3 } = require("../../utils/awsServises");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
+
 const { Op } = require("sequelize");
 
 const CommunityCategories = db.communityCategories;
@@ -93,7 +95,7 @@ exports.createPost = async (req, res) => {
 		}
 		let imageUrl = "";
 		if (req.file) {
-			imageUrl = await uploadFileToS3(req.file, "/communityPosts");
+			imageUrl = await uploadFileToSpaces(req.file, "communityPosts");
 		}
 
 		const post = await CommunityPosts.create({

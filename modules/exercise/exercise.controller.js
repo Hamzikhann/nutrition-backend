@@ -3,6 +3,7 @@ const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
 const { uploadFileToS3 } = require("../../utils/awsServises");
 const crypto = require("../../utils/crypto");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Exercise = db.exercises;
 const WorkoutDayExercises = db.workoutDayExercises;
@@ -27,7 +28,7 @@ exports.create = async (req, res) => {
 				});
 			}
 
-			const s3Key = await uploadFileToS3(req.file, "exerciseVideos");
+			const s3Key = await uploadFileToSpaces(req.file, "exerciseVideos");
 
 			const exercise = await Exercise.create({
 				name,
@@ -84,7 +85,7 @@ exports.update = async (req, res) => {
 			}
 
 			if (req.file) {
-				var s3Key = await uploadFileToS3(req.file, "exerciseVideos");
+				var s3Key = await uploadFileToSpaces(req.file, "exerciseVideos");
 			}
 			await exercise.update({
 				name,

@@ -8,6 +8,7 @@ const { sequelize } = require("../../models");
 const { Op } = require("sequelize");
 // import { uploadFileToS3 } from "../../utils/awsServises";
 const { uploadFileToS3 } = require("../../utils/awsServises");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Users = db.users;
 const Roles = db.roles;
@@ -90,7 +91,7 @@ exports.create = async (req, res) => {
 					isActive: "N",
 					roleId: 2
 				};
-				let transactionUpload = await uploadFileToS3(req.file, "Payments");
+				let transactionUpload = await uploadFileToSpaces(req.file, "Payments");
 				const getPlan = await Plan.findOne({ where: { id: crypto.decrypt(req.body.planId), isActive: "Y" } });
 
 				// if (req.role == "Administrator") userObj.roleId = crypto.decrypt(req.body.roleId);

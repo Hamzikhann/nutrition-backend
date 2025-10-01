@@ -5,6 +5,7 @@ const encryptHelper = require("../../utils/encryptHelper");
 const { uploadFileToS3 } = require("../../utils/awsServises");
 const { description } = require("@hapi/joi/lib/base");
 const { eachQuarterOfInterval } = require("date-fns");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Supplements = db.supplements;
 const SupplementsCategories = db.supplementsCategories;
@@ -27,7 +28,7 @@ exports.create = async (req, res) => {
 			return res.send({ message: "File is required" }).status(201);
 		}
 
-		let image = await uploadFileToS3(req.file, "supplements");
+		let image = await uploadFileToSpaces(req.file, "supplements");
 
 		let supplementObj = {
 			title: req.body.title,

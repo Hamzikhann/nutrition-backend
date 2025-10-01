@@ -4,6 +4,7 @@ const encryptHelper = require("../../utils/encryptHelper");
 const { uploadFileToS3 } = require("../../utils/awsServises");
 const sequelize = db.sequelize; // ADD THIS LINE
 const crypto = require("../../utils/crypto");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Payment = db.payments;
 const UserPlans = db.userPlans;
@@ -56,7 +57,7 @@ exports.create = async (req, res) => {
 		});
 
 		const file = req.file;
-		const fileUrl = await uploadFileToS3(file, "payments");
+		const fileUrl = await uploadFileToSpaces(file, "payments");
 
 		const updateUser = await User.update(
 			{

@@ -3,6 +3,8 @@ const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
 const { uploadFileToS3 } = require("../../utils/awsServises");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
+
 const sequelize = db.sequelize;
 const { Op, literal } = db.Sequelize;
 const UserAssesmentForm = db.userAssesmentForm;
@@ -115,7 +117,7 @@ exports.create = async (req, res) => {
 		if (req.files) {
 			console.log("filesssss", req.files["media"]);
 			for (let file of req.files) {
-				const s3Key = await uploadFileToS3(file, `userAssesmentForm/${userId}/assessment`);
+				const s3Key = await uploadFileToSpaces(file, `userAssesmentForm/${userId}/assessment`);
 
 				await UserAssesmentFormFiles.create(
 					{

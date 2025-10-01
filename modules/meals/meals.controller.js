@@ -5,6 +5,7 @@ const { sequelize } = require("../../models");
 const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
 const mealTypes = require("../../models/mealTypes");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Meals = db.meals;
 const MealType = db.mealTypes;
@@ -52,7 +53,7 @@ exports.create = async (req, res) => {
 
 		let videoUrl = null;
 		if (req.file) {
-			videoUrl = await uploadFileToS3(req.file, `meals/videos`);
+			videoUrl = await uploadFileToSpaces(req.file, `meals/videos`);
 		} else {
 			return res.status(204).send({
 				message: "Video is required"
@@ -191,7 +192,7 @@ exports.update = async (req, res) => {
 
 		let videoUrl = meal.image;
 		if (req.file) {
-			videoUrl = await uploadFileToS3(req.file, `meals/videos`);
+			videoUrl = await uploadFileToSpaces(req.file, `meals/videos`);
 		}
 
 		await meal.update(

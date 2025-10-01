@@ -1,6 +1,8 @@
 const db = require("../../models");
 const encryptHelper = require("../../utils/encryptHelper");
 const { uploadFileToS3 } = require("../../utils/awsServises");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
+
 const sequelize = db.sequelize; // ADD THIS LINE
 const crypto = require("../../utils/crypto");
 const Joi = require("@hapi/joi");
@@ -19,7 +21,7 @@ exports.create = async (req, res) => {
 		}
 
 		if (req.file) {
-			const s3Key = await uploadFileToS3(req.file, "banners");
+			const s3Key = await uploadFileToSpaces(req.file, "banners");
 			req.body.image = s3Key;
 		}
 
@@ -65,7 +67,7 @@ exports.update = async (req, res) => {
 			link: req.body.link
 		};
 		if (req.file) {
-			const s3Key = await uploadFileToS3(req.file, "banners");
+			const s3Key = await uploadFileToSpaces(req.file, "banners");
 
 			updateObj.image = s3Key;
 		}

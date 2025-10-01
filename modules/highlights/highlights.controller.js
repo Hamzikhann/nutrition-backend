@@ -5,6 +5,7 @@ const encryptHelper = require("../../utils/encryptHelper");
 const emails = require("../../utils/emails");
 const crypto = require("../../utils/crypto");
 const { uploadFileToS3, getFileUrl } = require("../../utils/awsServises");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Highlights = db.highlights;
 const HighlightItems = db.highlightItems;
@@ -32,7 +33,7 @@ exports.create = async (req, res) => {
 			let userId = crypto.decrypt(req.userId);
 
 			// Upload to S3
-			const s3Key = await uploadFileToS3(
+			const s3Key = await uploadFileToSpaces(
 				req.file,
 				`highlights/${userId}` // Organize by user ID
 			);
@@ -131,7 +132,7 @@ exports.createHighlightItem = async (req, res) => {
 			// Determine media type
 			const mediaType = req.file.mimetype.startsWith("video/") ? "video" : "photo";
 
-			const s3Key = await uploadFileToS3(
+			const s3Key = await uploadFileToSpaces(
 				req.file,
 				`highlights/${userId}` // Organize by user ID
 			);
@@ -251,7 +252,7 @@ exports.updateHighlightItem = async (req, res) => {
 			};
 
 			if (req.file) {
-				var s3Key = await uploadFileToS3(
+				var s3Key = await uploadFileToSpaces(
 					req.file,
 					`highlights/${userId}` // Organize by user ID
 				);

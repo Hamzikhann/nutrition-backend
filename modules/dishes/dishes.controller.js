@@ -4,6 +4,7 @@ const Joi = require("joi");
 const { uploadFileToS3 } = require("../../utils/awsServises");
 const { sequelize } = require("../../models");
 const crypto = require("../../utils/crypto");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Dishes = db.dishes;
 const Ingredients = db.ingredients;
@@ -50,7 +51,7 @@ exports.create = async (req, res) => {
 		console.log(typeof directions);
 
 		// Upload to S3
-		const s3Key = await uploadFileToS3(req.file, `ingredients`);
+		const s3Key = await uploadFileToSpaces(req.file, `ingredients`);
 
 		// Create Dish
 		const dish = await Dishes.create(
@@ -150,7 +151,7 @@ exports.createCategory = async (req, res) => {
 			return res.status(200).json({ message: "This Category is Already created" });
 		}
 
-		const s3Key = await uploadFileToS3(req.file, `dishesCategories`);
+		const s3Key = await uploadFileToSpaces(req.file, `dishesCategories`);
 
 		const category = await DishesCategories.create({
 			title: req.body.title,
@@ -194,7 +195,7 @@ exports.createMainCategory = async (req, res) => {
 			return res.status(200).json({ message: "This Main Category is Already created" });
 		}
 
-		const s3Key = await uploadFileToS3(req.file, `categories`);
+		const s3Key = await uploadFileToSpaces(req.file, `categories`);
 
 		const category = await Categories.create({
 			title: req.body.name
@@ -284,7 +285,7 @@ exports.update = async (req, res) => {
 			};
 			console.log(updateObj);
 			if (req.file) {
-				const s3Key = await uploadFileToS3(req.file, `dishes`);
+				const s3Key = await uploadFileToSpaces(req.file, `dishes`);
 				value.image = s3Key;
 			}
 

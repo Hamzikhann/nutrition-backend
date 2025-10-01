@@ -5,6 +5,7 @@ const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
 const Op = require("sequelize").Op;
 const { uploadFileToS3 } = require("../../utils/awsServises");
+const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 // const deepClone = require("deep-clone");
 
 const Habits = db.habits;
@@ -35,7 +36,7 @@ exports.create = async (req, res) => {
 				});
 			}
 
-			const s3Key = await uploadFileToS3(req.file, `habits`);
+			const s3Key = await uploadFileToSpaces(req.file, `habits`);
 			console.log(s3Key);
 
 			const habit = await Habits.create({
@@ -367,7 +368,7 @@ exports.update = async (req, res) => {
 			});
 
 			if (req.file) {
-				var s3Key = await uploadFileToS3(req.file, "habits");
+				var s3Key = await uploadFileToSpaces(req.file, "habits");
 			}
 			const habit = await Habits.update(
 				{
