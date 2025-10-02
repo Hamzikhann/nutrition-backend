@@ -470,53 +470,59 @@ exports.loginv2 = async (req, res) => {
 			attributes: ["password"],
 			raw: true
 		});
-		if (userExist) {
-			const user = await Users.findOne({
-				where: {
-					email: req.body.email.trim(),
-					password: req.body.password,
-					isActive: "Y"
-				},
-				include: [
-					{
-						model: Roles,
-						attributes: ["title"]
-					}
-				],
-				attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL", "modules"]
-			});
-			if (user && userExist.password === req.body.password) {
-				if (req.body.fcmToken) {
-					let updateUser = Users.update({ fcmToken: req.body.fcmToken }, { where: { id: user.id } });
-				}
-				encryptHelper(user);
 
-				const token = jwt.signToken({
-					userId: user.id,
-					email: user?.email,
-					roleId: user.roleId,
-					role: user.role.title
-				});
-				res.status(200).send({
-					message: "Logged in successful",
-					data: { user },
-					token,
-					fcmToken: req.body?.fcmToken ? req.body?.fcmToken : ""
-				});
-			} else {
-				res.status(403).send({
-					title: "Incorrect Logins",
-					message: "Incorrect Logins"
-				});
-			}
-		} else {
-			res.status(401).send({
+		if (!userExist) {
+			return res.status(401).send({
 				title: "Incorrect Email.",
-				message: "Email does not exist in our system, Please verify you have entered correct email."
+				message: "Email does not exist in our system."
 			});
 		}
+
+		const user = await Users.findOne({
+			where: {
+				email: req.body.email.trim(),
+				password: req.body.password,
+				isActive: "Y"
+			},
+			include: [
+				{
+					model: Roles,
+					attributes: ["title"]
+				}
+			],
+			attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL", "modules"]
+		});
+
+		if (!user || userExist.password !== req.body.password) {
+			return res.status(403).send({
+				title: "Incorrect Logins",
+				message: "Incorrect Email/Password"
+			});
+		}
+
+		if (req.body.fcmToken) {
+			await Users.update({ fcmToken: req.body.fcmToken }, { where: { id: user.id } });
+		}
+
+		// create new JWT
+		const token = jwt.signToken({
+			userId: user.id,
+			email: user.email,
+			roleId: user.roleId,
+			role: user.role.title
+		});
+
+		// Save token in Redis, overwrite old one
+		await redis.set(`session:${user.id}`, token);
+
+		res.status(200).send({
+			message: "Logged in successful",
+			data: { user },
+			token,
+			fcmToken: req.body?.fcmToken ? req.body?.fcmToken : ""
+		});
 	} catch (err) {
-		emails.errorEmail(req, err);
+		console.error(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred."
 		});
