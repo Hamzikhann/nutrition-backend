@@ -400,6 +400,7 @@ exports.update = async (req, res) => {
 
 exports.listv2 = async (req, res) => {
 	try {
+		console.log(req.userId);
 		let userId = crypto.decrypt(req.userId);
 		let whereClause = {};
 

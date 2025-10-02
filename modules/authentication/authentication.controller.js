@@ -504,6 +504,7 @@ exports.loginv2 = async (req, res) => {
 			await Users.update({ fcmToken: req.body.fcmToken }, { where: { id: user.id } });
 		}
 
+		encryptHelper(user);
 		// create new JWT
 		const token = jwt.signToken({
 			userId: user.id,
