@@ -12,6 +12,9 @@ require("dotenv").config();
 
 // const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
+const Redis = require("ioredis");
+const redis = new Redis();
+
 const Users = db.users;
 const UserProfile = db.userProfile;
 const Roles = db.roles;
@@ -19,72 +22,77 @@ const Otp = db.otp;
 
 exports.login = async (req, res) => {
 	try {
+		const decryptedUserId = crypto.decrypt(req.body.userId);
+
 		const userExist = await Users.findOne({
 			where: {
-				id: crypto.decrypt(req.body.userId),
+				id: decryptedUserId,
 				isActive: "Y"
 			},
 			raw: true
 		});
-		if (userExist) {
-			const user = await Users.findOne({
-				where: {
-					id: crypto.decrypt(req.body.userId),
-					// password: req.body.password,
-					isActive: "Y"
-				},
-				include: [
-					{
-						model: Roles,
-						attributes: ["title"]
-					}
-				],
-				attributes: [
-					"id",
-					"firstName",
-					"lastName",
-					"email",
-					"roleId",
-					"phoneNo",
-					"imageURL",
-					"modules",
-					"isPayment",
-					"isFormCreated"
-				]
-			});
-			if (user) {
-				// if (req.body.fcmToken) {
-				// 	let updateUser = Users.update({ fcmToken: req.body.fcmToken }, { where: { id: user.id } });
-				// }
-				encryptHelper(user);
 
-				const token = jwt.signToken({
-					userId: user.id,
-					email: user?.email,
-					roleId: user?.roleId,
-					role: user?.role?.title
-				});
-				res.status(200).send({
-					message: "Logged in successful",
-					data: { user },
-					token,
-					fcmToken: req.body?.fcmToken ? req.body?.fcmToken : ""
-				});
-			} else {
-				res.status(403).send({
-					title: "Incorrect Logins",
-					message: "Incorrect Logins"
-				});
-			}
-		} else {
-			res.status(401).send({
-				title: "Incorrect Email.",
-				message: "Email does not exist in our system, Please verify you have entered correct email."
+		if (!userExist) {
+			return res.status(401).send({
+				title: "Incorrect User.",
+				message: "User does not exist in our system."
 			});
 		}
+
+		const user = await Users.findOne({
+			where: {
+				id: decryptedUserId,
+				isActive: "Y"
+			},
+			include: [
+				{
+					model: Roles,
+					attributes: ["title"]
+				}
+			],
+			attributes: [
+				"id",
+				"firstName",
+				"lastName",
+				"email",
+				"roleId",
+				"phoneNo",
+				"imageURL",
+				"modules",
+				"isPayment",
+				"isFormCreated"
+			]
+		});
+
+		if (!user) {
+			return res.status(403).send({
+				title: "Login Failed",
+				message: "Invalid credentials."
+			});
+		}
+
+		// Encrypt user object (your existing helper)
+		encryptHelper(user);
+
+		// Generate JWT
+		const token = jwt.signToken({
+			userId: user.id,
+			email: user.email,
+			roleId: user.roleId,
+			role: user.role?.title
+		});
+
+		// Save token in Redis, replacing old session
+		await redis.set(`session:${user.id}`, token);
+
+		res.status(200).send({
+			message: "Logged in successful",
+			data: { user },
+			token,
+			fcmToken: req.body?.fcmToken ? req.body?.fcmToken : ""
+		});
 	} catch (err) {
-		// emails.errorEmail(req, err);
-		console.log(err);
+		console.error("Login Error:", err);
 		res.status(500).send({
 			message: err.message || "Some error occurred."
 		});
