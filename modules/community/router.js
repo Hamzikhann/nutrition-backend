@@ -41,5 +41,34 @@ router.post("/delete/post", (req, res) => {
 		});
 	}
 });
+router.post("/update/post", upload.single("image"), (req, res) => {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		communityController.updatePost(req, res);
+	} else {
+		return res.status(403).json({
+			message: "You are not authorized to update a post"
+		});
+	}
+});
+
+router.post("/update/category", (req, res) => {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		communityController.updateCategory(req, res);
+	} else {
+		return res.status(403).json({
+			message: "You are not authorized to update a category"
+		});
+	}
+});
+
+router.post("/delete/category", (req, res) => {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		communityController.deleteCategory(req, res);
+	} else {
+		return res.status(403).json({
+			message: "You are not authorized to delete a category"
+		});
+	}
+});
 
 module.exports = router;

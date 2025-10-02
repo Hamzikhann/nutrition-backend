@@ -11,4 +11,6 @@ router.post("/list", commentsController.getComments);
 // Delete a comment
 router.post("/delete", commentsController.deleteComment);
 
+router.post("/update", commentsController.updateComment);
+
 module.exports = router;

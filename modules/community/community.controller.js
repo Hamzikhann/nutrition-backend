@@ -18,7 +18,7 @@ exports.createCategory = async (req, res) => {
 	try {
 		const joiSchema = joi.object({
 			title: joi.string().required(),
-			privacy: joi.string().required()
+			privacy: joi.string().required().allow("").allow(null)
 		});
 		const { error, value } = joiSchema.validate(req.body);
 		if (error) {
@@ -307,6 +307,140 @@ exports.deletePost = async (req, res) => {
 			return res.status(200).json({
 				message: "Post deleted successfully"
 			});
+		}
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.updatePost = async (req, res) => {
+	try {
+		const joiSchema = joi.object({
+			postId: joi.string().required(),
+			title: joi.string().required(),
+			content: joi.string().required(),
+			categoryId: joi.string().required(),
+			access: joi.string().optional().allow("").allow(null)
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const post = await CommunityPosts.findOne({
+				where: {
+					id: crypto.decrypt(value.postId)
+				}
+			});
+			if (!post) {
+				return res.status(400).json({
+					message: "Post not found"
+				});
+			}
+
+			let updateObj = {
+				title: value.title,
+				content: value.content,
+				communityCategoryId: crypto.decrypt(value.categoryId),
+				access: value.access
+			};
+
+			if (req.file) {
+				let media = await uploadFileToSpaces(req.file, "communityPosts");
+				updateObj.image = media;
+			}
+			console.log(updateObj);
+			await CommunityPosts.update(updateObj, {
+				where: {
+					id: crypto.decrypt(value.postId)
+				}
+			});
+
+			return res.status(200).json({
+				message: "Post updated successfully"
+			});
+		}
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.updateCategory = async (req, res) => {
+	try {
+		const joiSchema = joi.object({
+			id: joi.string().required(),
+			title: joi.string().required(),
+			privacy: joi.string().optional().allow("").allow(null)
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const category = await CommunityCategories.findOne({
+				where: {
+					id: crypto.decrypt(value.id)
+				}
+			});
+			if (!category) {
+				return res.status(400).json({
+					message: "Category not found"
+				});
+			}
+
+			await CommunityCategories.update(
+				{
+					title: value.title,
+					privacy: value.privacy
+				},
+				{
+					where: {
+						id: crypto.decrypt(value.id)
+					}
+				}
+			);
+
+			return res.status(200).json({
+				message: "Category updated successfully"
+			});
+		}
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.deleteCategory = async (req, res) => {
+	try {
+		const joiSchema = joi.object({
+			id: joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const category = await CommunityCategories.findOne({
+				where: {
+					id: crypto.decrypt(value.id)
+				}
+			});
+			if (!category) {
+				return res.status(400).json({
+					message: "Category not found"
+				});
+			}
 		}
 	} catch (err) {
 		console.log(err);
