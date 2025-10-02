@@ -163,8 +163,14 @@ exports.create = async (req, res) => {
 
 		// Commit before fetching complete data
 		await t.commit();
+		const parts = req.body.name.trim().split(" ");
+		const firstName = parts[0];
+		const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+
 		let updateuser = await db.users.update(
 			{
+				firstName: firstName,
+				lastName: lastName,
 				isFormCreated: "Y"
 			},
 			{ where: { id: userId } }
