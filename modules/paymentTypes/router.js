@@ -2,7 +2,7 @@ const router = require("express").Router();
 const paymentTypesController = require("./paymentTypes.controller");
 
 router.post("/create", async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await paymentTypesController.create(req, res);
 	} else {
 		return res.status(400).send({
@@ -20,7 +20,7 @@ router.post("/detail", async (req, res) => {
 });
 
 router.post("/update", async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await paymentTypesController.update(req, res);
 	} else {
 		return res.status(400).send({
@@ -30,7 +30,7 @@ router.post("/update", async (req, res) => {
 });
 
 router.post("/delete", async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await paymentTypesController.delete(req, res);
 	} else {
 		return res.status(400).send({

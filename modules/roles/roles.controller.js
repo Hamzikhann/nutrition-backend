@@ -10,7 +10,7 @@ exports.list = (req, res) => {
 		Roles.findAll({
 			where: {
 				isActive: "Y",
-				id: { [Op.ne]: 1 }
+				id: { [Op.ne]: [1, 2] }
 			},
 			attributes: ["id", "title"]
 		})

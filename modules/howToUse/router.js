@@ -6,7 +6,7 @@ const { upload } = fileUpload("howToUse");
 
 router.post("/list", howToUseController.list);
 router.post("/create", upload.single("media"), (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		howToUseController.create(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
@@ -14,7 +14,7 @@ router.post("/create", upload.single("media"), (req, res) => {
 });
 
 router.post("/create/category", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		howToUseController.createCategory(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
@@ -22,14 +22,14 @@ router.post("/create/category", (req, res) => {
 });
 
 router.post("/update", upload.single("media"), (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		howToUseController.update(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
 	}
 });
 router.post("/delete", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		howToUseController.delete(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });

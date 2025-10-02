@@ -351,6 +351,7 @@ exports.update = async (req, res) => {
 			id: Joi.string().required(),
 			name: Joi.string().required(),
 			description: Joi.string().required(),
+			image: Joi.string().optional().allow("").allow(null),
 			mandatory: Joi.string().required()
 		});
 		const { error, value } = schema.validate(req.body);

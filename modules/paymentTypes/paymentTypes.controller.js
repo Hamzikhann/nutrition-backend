@@ -2,8 +2,10 @@ const db = require("../../models");
 const encryptHelper = require("../../utils/encryptHelper");
 const Joi = require("joi");
 const crypto = require("../../utils/crypto");
+const { CatalogItem } = require("twilio/lib/rest/content/v1/content");
 
 const PaymentTypes = db.paymentTypes;
+const PaymentTypesCategories = db.paymentTypesCategories;
 
 exports.create = async (req, res) => {
 	try {
@@ -16,7 +18,8 @@ exports.create = async (req, res) => {
 			iban: Joi.string().optional().allow("").allow(null),
 			swiftCode: Joi.string().optional().allow("").allow(null),
 			isActive: Joi.boolean().optional().allow("").allow(null),
-			instructions: Joi.string().optional().allow("").allow(null)
+			instructions: Joi.string().optional().allow("").allow(null),
+			category: Joi.string().optional().allow("").allow(null)
 		});
 
 		const { error, value } = schema.validate(req.body);
@@ -33,6 +36,8 @@ exports.create = async (req, res) => {
 		let swiftCode = req.body.swiftCode;
 		let paymentInstructions = req.body.instructions;
 
+		let category = req.body.category;
+
 		const createpaymentType = await PaymentTypes.create({
 			paymentMethodName: paymentMethodName,
 			paymentType: paymentType,
@@ -41,7 +46,8 @@ exports.create = async (req, res) => {
 			bankName: bankName,
 			iban: iban,
 			swiftCode: swiftCode,
-			paymentInstructions: paymentInstructions
+			paymentInstructions: paymentInstructions,
+			paymentTypesCategoryId: crypto.decrypt(category) //category
 		});
 		encryptHelper(createpaymentType);
 
@@ -62,7 +68,12 @@ exports.list = async (req, res) => {
 		const paymentTypes = await PaymentTypes.findAll({
 			where: {
 				isActive: "Y"
-			}
+			},
+			include: [
+				{
+					model: PaymentTypesCategories
+				}
+			]
 		});
 		encryptHelper(paymentTypes);
 
@@ -128,7 +139,8 @@ exports.update = async (req, res) => {
 			iban: Joi.string().optional().allow("").allow(null),
 			swiftCode: Joi.string().optional().allow("").allow(null),
 			isActive: Joi.boolean().optional().allow("").allow(null),
-			instructions: Joi.string().optional().allow("").allow(null)
+			instructions: Joi.string().optional().allow("").allow(null),
+			category: Joi.string().optional().allow("").allow(null)
 		});
 
 		const { error, value } = schema.validate(req.body);
@@ -138,7 +150,8 @@ exports.update = async (req, res) => {
 			});
 		}
 
-		const { id, name, type, accountNumber, accountTitle, bankName, iban, swiftCode, isActive, instructions } = value;
+		const { id, name, type, accountNumber, accountTitle, bankName, iban, swiftCode, isActive, instructions, category } =
+			value;
 
 		const [updated] = await PaymentTypes.update(
 			{
@@ -149,7 +162,8 @@ exports.update = async (req, res) => {
 				bankName,
 				iban,
 				swiftCode,
-				paymentInstructions: instructions
+				paymentInstructions: instructions,
+				paymentTypesCategoryId: crypto.decrypt(category)
 			},
 			{
 				where: { id: crypto.decrypt(id) }

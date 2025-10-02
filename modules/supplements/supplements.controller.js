@@ -86,7 +86,7 @@ exports.list = async (req, res) => {
 		// Fetch current user + role
 		let userRole = req.role;
 		let userId = crypto.decrypt(req.userId);
-		let whereCondition = {};
+		let whereCondition = { isActive: "Y" };
 
 		if (userRole !== "Administrator") {
 			// 1️⃣ Get assigned categories for this user
@@ -113,7 +113,7 @@ exports.list = async (req, res) => {
 		// 4️⃣ Fetch categories (with supplements inside)
 		const response = await SupplementsCategories.findAll({
 			where: whereCondition,
-			include: [{ model: Supplements }]
+			include: [{ where: { isActive: "Y" }, model: Supplements }]
 		});
 
 		encryptHelper(response);
@@ -191,6 +191,63 @@ exports.assignSupplementToCategory = async (req, res) => {
 		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while reassigning the booking."
+		});
+	}
+};
+
+exports.update = async (req, res) => {
+	try {
+		const schema = Joi.object({
+			id: Joi.string().required(),
+			title: Joi.string().required(),
+			description: Joi.string().optional().allow("").allow(null),
+			externalLink: Joi.string().optional().allow("").allow(null),
+			supplementCategoryId: Joi.string().optional().allow("").allow(null),
+			image: Joi.string().optional().allow("").allow(null)
+		});
+
+		const { error } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({ message: error.details[0].message });
+		}
+
+		const { id, title, description, externalLink, supplementCategoryId } = req.body;
+
+		let updateObj = {
+			title: title,
+			description: description,
+			externalLink: externalLink,
+			supplementsCategoryId: crypto.decrypt(supplementCategoryId)
+		};
+
+		if (req.file) {
+			let image = await uploadFileToSpaces(req.file, "supplements");
+			updateObj.image = image;
+		}
+
+		await Supplements.update(updateObj, { where: { id: crypto.decrypt(id) } });
+
+		res.status(200).send({ message: "Supplement updated" });
+	} catch (err) {
+		// emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while reassigning the booking."
+		});
+	}
+};
+
+exports.delete = async (req, res) => {
+	try {
+		const { id } = req.body;
+
+		await Supplements.update({ isActive: "N" }, { where: { id: crypto.decrypt(id) } });
+		return res.status(200).json({
+			message: "Supplement deleted successfully"
+		});
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Something went wrong"
 		});
 	}
 };

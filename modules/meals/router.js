@@ -5,7 +5,7 @@ const fileUpload = require("../../utils/fileUpload");
 const { upload } = fileUpload("meals");
 
 router.post("/create", upload.single("image"), async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await mealsController.create(req, res);
 	} else {
 		return res.status(400).send({
@@ -19,7 +19,7 @@ router.post("/list", async (req, res) => {
 });
 
 router.post("/update", upload.single("image"), async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await mealsController.update(req, res);
 	} else {
 		return res.status(400).send({
@@ -29,7 +29,7 @@ router.post("/update", upload.single("image"), async (req, res) => {
 });
 
 router.post("/delete", async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await mealsController.delete(req, res);
 	} else {
 		return res.status(400).send({

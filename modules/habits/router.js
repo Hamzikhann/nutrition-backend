@@ -20,7 +20,7 @@ router.post("/detail", async (req, res) => {
 	await habitsController.detail(req, res);
 });
 router.post("/update", upload.single("image"), async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await habitsController.update(req, res);
 	} else {
 		return res.status(400).send({
@@ -29,7 +29,7 @@ router.post("/update", upload.single("image"), async (req, res) => {
 	}
 });
 router.post("/delete", async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await habitsController.delete(req, res);
 	} else {
 		return res.status(400).send({

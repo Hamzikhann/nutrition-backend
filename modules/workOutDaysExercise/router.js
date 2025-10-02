@@ -5,7 +5,7 @@ const router = express.Router();
 const workoutDayExercisesController = require("./workOutDaysExercise.controller");
 
 router.post("/create", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		workoutDayExercisesController.create(req, res);
 	} else {
 		return res.status(400).send({
@@ -19,7 +19,7 @@ router.post("/list", (req, res) => {
 });
 
 router.post("/detail", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		workoutDayExercisesController.detail(req, res);
 	} else {
 		return res.status(400).send({
@@ -29,7 +29,7 @@ router.post("/detail", (req, res) => {
 });
 
 router.post("/list/weeks", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		workoutDayExercisesController.listWeeks(req, res);
 	} else {
 		return res.status(400).send({
@@ -39,7 +39,7 @@ router.post("/list/weeks", (req, res) => {
 });
 
 router.post("/list/workoutdays", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		workoutDayExercisesController.listWorkOutDays(req, res);
 	} else {
 		return res.status(400).send({
@@ -53,7 +53,7 @@ router.post("/update/status", (req, res) => {
 });
 
 router.post("/create/week", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		workoutDayExercisesController.createWeek(req, res);
 	} else {
 		return res.status(400).send({

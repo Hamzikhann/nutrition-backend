@@ -7,7 +7,7 @@ const { upload } = fileUplod("communityPosts");
 const communityController = require("./community.controller");
 
 router.post("/create/category", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		communityController.createCategory(req, res);
 	} else {
 		res.status(403).json({
@@ -33,7 +33,7 @@ router.post("/detail", (req, res) => {
 });
 
 router.post("/delete/post", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		communityController.deletePost(req, res);
 	} else {
 		return res.status(403).json({

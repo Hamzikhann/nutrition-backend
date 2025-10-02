@@ -23,8 +23,11 @@ const s3 = new AWS.S3({
 // Upload function
 const uploadFileToSpaces = async (file, folder = "uploads") => {
 	try {
+		console.log(file);
 		const fileExt = path.extname(file.originalname);
-		const key = `${folder}/${Date.now()}${fileExt}`;
+		const nameWithoutExt = path.parse(file.originalname).name;
+
+		const key = `${folder}/${Date.now()}${nameWithoutExt}${fileExt}`;
 
 		const params = {
 			Bucket: process.env.DO_SPACES_BUCKET, // Your Space name

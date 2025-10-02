@@ -7,7 +7,7 @@ const { upload } = fileUplod("exerciseVideoes");
 const exerciseController = require("./exercise.controller");
 
 router.post("/create", upload.single("video"), (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		exerciseController.create(req, res);
 	} else {
 		return res.status(403).send({
@@ -17,7 +17,7 @@ router.post("/create", upload.single("video"), (req, res) => {
 });
 
 router.post("/list", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		exerciseController.list(req, res);
 	} else {
 		return res.status(403).send({
@@ -27,7 +27,7 @@ router.post("/list", (req, res) => {
 });
 
 router.post("/update", upload.single("video"), (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		exerciseController.update(req, res);
 	} else {
 		return res.status(403).send({
@@ -37,7 +37,7 @@ router.post("/update", upload.single("video"), (req, res) => {
 });
 
 router.post("/delete", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		exerciseController.delete(req, res);
 	} else {
 		return res.status(403).send({

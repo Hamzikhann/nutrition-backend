@@ -5,7 +5,7 @@ const router = express.Router();
 const rolesController = require("./roles.controller");
 
 router.post("/list", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		rolesController.list(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });

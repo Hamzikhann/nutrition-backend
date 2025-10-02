@@ -14,13 +14,13 @@ router.post("/list", (req, res) => {
 	}
 });
 
-// router.post("/list/employees", (req, res) => {
-// 	if (req.role == "Administrator") {
-// 		usersController.listEmployees(req, res);
-// 	} else {
-// 		res.status(403).send({ message: "Forbidden Access" });
-// 	}
-// });
+router.post("/list/employees", (req, res) => {
+	if (req.role == "Administrator") {
+		usersController.listEmployees(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
+});
 
 router.post("/create", upload.single("image"), (req, res) => {
 	if (req.role == "Administrator") {
@@ -62,6 +62,14 @@ router.post("/create", upload.single("image"), (req, res) => {
 router.post("/update/status", (req, res) => {
 	if (req.role == "Administrator") {
 		usersController.updateStatus(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
+});
+
+router.post("/create/employee", (req, res) => {
+	if (req.role == "Administrator") {
+		usersController.createEmployee(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
 	}

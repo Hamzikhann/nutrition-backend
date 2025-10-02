@@ -5,7 +5,7 @@ const fileUpload = require("../../utils/fileUpload");
 const { upload } = fileUpload("dishes");
 
 router.post("/create", upload.single("image"), async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await dishesController.create(req, res);
 	} else {
 		return res.status(400).send({
@@ -19,7 +19,7 @@ router.post("/list", async (req, res) => {
 });
 
 router.post("/create/category", upload.single("image"), async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await dishesController.createCategory(req, res);
 	} else {
 		return res.status(400).send({
@@ -29,7 +29,7 @@ router.post("/create/category", upload.single("image"), async (req, res) => {
 });
 
 router.post("/create/maincategory", upload.single("image"), async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await dishesController.createMainCategory(req, res);
 	} else {
 		return res.status(400).send({
@@ -39,7 +39,7 @@ router.post("/create/maincategory", upload.single("image"), async (req, res) => 
 });
 
 router.post("/list/category", async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await dishesController.listCategory(req, res);
 	} else {
 		return res.status(400).send({
@@ -49,7 +49,7 @@ router.post("/list/category", async (req, res) => {
 });
 
 router.post("/update", upload.single("image"), async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		console.log(req.body);
 		await dishesController.update(req, res);
 	} else {
@@ -60,7 +60,7 @@ router.post("/update", upload.single("image"), async (req, res) => {
 });
 
 router.post("/delete", async (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await dishesController.delete(req, res);
 	} else {
 		return res.status(400).send({

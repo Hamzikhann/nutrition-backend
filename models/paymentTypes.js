@@ -20,5 +20,9 @@ module.exports = (sequelize, DataTypes) => {
 		{ timestamps: true }
 	);
 
+	table.associate = function (models) {
+		table.belongsTo(models.paymentTypesCategories);
+	};
+
 	return table;
 };

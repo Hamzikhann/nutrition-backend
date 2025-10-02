@@ -98,8 +98,8 @@ exports.update = async (req, res) => {
 			let media = await uploadFileToSpaces(req.file, "howToUse");
 			updateObje.media = media;
 		}
-
-		await HowToUse.update(updateObje, { where: { id: id } });
+		console.log(updateObje);
+		await HowToUse.update(updateObje, { where: { id: crypto.decrypt(id) } });
 		return res.status(200).json({
 			message: "How To Use updated successfully"
 		});

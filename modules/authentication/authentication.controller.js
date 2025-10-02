@@ -47,6 +47,7 @@ exports.login = async (req, res) => {
 					"roleId",
 					"phoneNo",
 					"imageURL",
+					"modules",
 					"isPayment",
 					"isFormCreated"
 				]
@@ -474,7 +475,7 @@ exports.loginv2 = async (req, res) => {
 						attributes: ["title"]
 					}
 				],
-				attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL"]
+				attributes: ["id", "firstName", "lastName", "email", "roleId", "phoneNo", "imageURL", "modules"]
 			});
 			if (user && userExist.password === req.body.password) {
 				if (req.body.fcmToken) {
