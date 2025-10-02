@@ -17,6 +17,7 @@ router.post("/create", upload.single("media"), (req, res) => {
 
 // Get all highlights
 router.post("/list", highlightsController.list);
+
 router.post("/create/items", upload.single("media"), (req, res) => {
 	if (req.role == "Administrator" || req.role == "Subadmin") {
 		highlightsController.createHighlightItem(req, res);

@@ -146,7 +146,7 @@ exports.createHighlightItem = async (req, res) => {
 				caption: req.body.caption,
 				duration: mediaType === "video" ? req.body.duration || 0 : null
 			});
-
+			encryptHelper(createHighlightItem);
 			return res.status(200).send({
 				message: "Highlight item created successfully.",
 				data: createHighlightItem
