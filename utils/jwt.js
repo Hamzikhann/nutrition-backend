@@ -6,9 +6,6 @@ exports.signToken = (data, expiresIn = process.env.JWT_EXPIRES_IN) => {
 	return jwt.sign(data, process.env.JWT_SECRET, { expiresIn });
 };
 
-const jwt = require("jsonwebtoken");
-const redis = require("../config/redis"); // your Redis client
-
 exports.protect = async (req, res, next) => {
 	try {
 		const token = req.headers["access-token"];
