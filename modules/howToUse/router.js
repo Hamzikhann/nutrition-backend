@@ -13,7 +13,7 @@ router.post("/create", upload.single("media"), (req, res) => {
 	}
 });
 
-router.post("/create/category", (req, res) => {
+router.post("/createCategory", (req, res) => {
 	if (req.role == "Administrator" || req.role == "Subadmin") {
 		howToUseController.createCategory(req, res);
 	} else {
