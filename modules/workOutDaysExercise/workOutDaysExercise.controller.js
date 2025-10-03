@@ -333,27 +333,6 @@ exports.updateStatus = async (req, res) => {
 	}
 };
 
-function convertDurationToWeeks(duration) {
-	// duration examples: "6 months", "4 months", "1 month", "12 days"
-	// const parts = duration.toLowerCase().split(" ");
-
-	// if (parts.length < 2) return 0; // invalid format
-
-	const value = parseInt(parts[0], 10);
-	const unit = parts[1];
-
-	if (isNaN(value)) return 0;
-
-	if (unit.startsWith("month") || unit.startsWith("Month") || unit.startsWith("Months")) {
-		return value * 4; // approx 4 weeks per month
-	} else if (unit.startsWith("day")) {
-		return Math.floor(value / 7); // convert days to weeks
-	} else if (unit.startsWith("week")) {
-		return value; // already in weeks
-	}
-	return 0;
-}
-
 exports.createWeek = async (req, res) => {
 	try {
 		const schema = joi.object({
@@ -409,7 +388,7 @@ function convertDurationToWeeks(duration) {
 	const [value, unit] = duration.split(" ");
 	const num = parseInt(value, 10);
 
-	if (unit.includes("month")) {
+	if (unit.startsWith("month") || unit.startsWith("Month") || unit.startsWith("Months")) {
 		// Assume average month = 30.44 days (Gregorian calendar average)
 		const days = num * 30.44;
 		return Math.round(days / 7); // round to nearest full week
