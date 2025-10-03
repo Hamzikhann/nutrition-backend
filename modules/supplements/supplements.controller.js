@@ -113,7 +113,7 @@ exports.list = async (req, res) => {
 		// 4️⃣ Fetch categories (with supplements inside)
 		const response = await SupplementsCategories.findAll({
 			where: whereCondition,
-			include: [{ where: { isActive: "Y" }, model: Supplements }]
+			include: [{ where: { isActive: "Y" }, model: Supplements,required:false }]
 		});
 
 		encryptHelper(response);

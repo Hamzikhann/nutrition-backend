@@ -268,9 +268,9 @@ exports.updateStatus = async (req, res) => {
 
 function convertDurationToWeeks(duration) {
 	// duration examples: "6 months", "4 months", "1 month", "12 days"
-	const parts = duration.toLowerCase().split(" ");
+	// const parts = duration.toLowerCase().split(" ");
 
-	if (parts.length < 2) return 0; // invalid format
+	// if (parts.length < 2) return 0; // invalid format
 
 	const value = parseInt(parts[0], 10);
 	const unit = parts[1];
@@ -308,21 +308,20 @@ exports.createWeek = async (req, res) => {
 		}
 
 		// Convert plan duration into weeks
-		const planWeeks = convertDurationToWeeks(plan.duration);
+		// const planWeeks = convertDurationToWeeks(plan.duration);
 		const { numberOfWeeks } = req.body;
 
-		if (numberOfWeeks > planWeeks) {
-			return res.status(400).send({
-				message: `Selected number of weeks (${numberOfWeeks}) exceeds plan duration (${planWeeks} weeks)`
-			});
-		}
+		// if (numberOfWeeks > planWeeks) {
+		// 	return res.status(400).send({
+		// 		message: `Selected number of weeks (${numberOfWeeks}) exceeds plan duration (${planWeeks} weeks)`
+		// 	});
+		// }
 
 		// Create weeks and their workout days
 		let createdWeeks = [];
 		for (let i = 1; i <= numberOfWeeks; i++) {
 			const week = await Week.create({
-				title: `Week ${i}`,
-				planId
+				title: `Week ${i}`
 			});
 
 			const days = Array.from({ length: 5 }, (_, idx) => ({
