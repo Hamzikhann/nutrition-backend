@@ -58,7 +58,9 @@ exports.list = async (req, res) => {
 		const howToUse = await HowToUseCategories.findAll({
 			include: [
 				{
-					model: HowToUse
+					model: HowToUse,
+					where: { isActive: "Y" },
+					required: false
 				}
 			]
 		});
