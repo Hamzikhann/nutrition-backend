@@ -76,7 +76,7 @@ exports.list = async (req, res) => {
 		// 3. Fetch workouts limited to duration
 		let workout = await Week.findAll({
 			where: {
-				title: { [db.Sequelize.Op.lte]: `Week ${durationWeeks}` } // or better: use numeric order field if you have one
+				order: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
 			},
 			include: [
 				{
@@ -106,8 +106,10 @@ exports.list = async (req, res) => {
 				}
 			],
 			attributes: {
-				exclude: ["createdAt", "updatedAt", "order", "planId"]
-			}
+				exclude: ["createdAt", "updatedAt", "planId"]
+			},
+			order: [["order", "ASC"]], // make sure weeks come in sequence
+			limit: durationWeeks // fetch only up to N weeks
 		});
 
 		encryptHelper(workout);
