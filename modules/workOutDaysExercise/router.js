@@ -15,7 +15,11 @@ router.post("/create", (req, res) => {
 });
 
 router.post("/list", (req, res) => {
-	workoutDayExercisesController.list(req, res);
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		workoutDayExercisesController.listofAdmin(req, res);
+	} else {
+		workoutDayExercisesController.list(req, res);
+	}
 });
 
 router.post("/detail", (req, res) => {

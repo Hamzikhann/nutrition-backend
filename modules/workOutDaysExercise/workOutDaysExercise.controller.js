@@ -9,7 +9,8 @@ const WorkOutDayExercises = db.workoutDayExercises;
 const Exercise = db.exercises;
 const WorkoutsCompletions = db.workoutsCompletions;
 const Plan = db.plans;
-exports.list = async (req, res) => {
+const UserPlan = db.userPlans;
+exports.listofAdmin = async (req, res) => {
 	try {
 		let workout = await Week.findAll({
 			include: [
@@ -43,6 +44,72 @@ exports.list = async (req, res) => {
 				exclude: ["createdAt", "updatedAt", "order", "planId"]
 			}
 		});
+		encryptHelper(workout);
+
+		return res.status(200).send({
+			message: "Work out day exercises listed successfully",
+			data: workout
+		});
+	} catch (err) {
+		return res.status(400).send({
+			message: err.message || "Some error occurred while listing the work out day exercises."
+		});
+	}
+};
+
+exports.list = async (req, res) => {
+	try {
+		// 1. Find user's plan
+
+		const userPlan = await UserPlan.findOne({
+			where: { userId: crypto.decrypt(req.userId) } // assuming protect middleware sets userId
+			// include: [{ model: Plan, attributes: ["duration"] }]
+		});
+
+		if (!userPlan) {
+			return res.status(404).send({ message: "No plan found for user" });
+		}
+
+		// 2. Convert duration → weeks
+		const durationWeeks = convertDurationToWeeks(userPlan.duration);
+		console.log(durationWeeks);
+		// 3. Fetch workouts limited to duration
+		let workout = await Week.findAll({
+			where: {
+				title: { [db.Sequelize.Op.lte]: `Week ${durationWeeks}` } // or better: use numeric order field if you have one
+			},
+			include: [
+				{
+					model: WorkoutDays,
+					include: [
+						{
+							model: WorkOutDayExercises,
+							include: [
+								{
+									model: Exercise,
+									attributes: {
+										exclude: ["createdAt", "updatedAt", "workoutDayId"]
+									}
+								},
+								{
+									model: WorkoutsCompletions
+								}
+							],
+							attributes: {
+								exclude: ["createdAt", "updatedAt", "exerciseId", "weekId", "workoutDayId"]
+							}
+						}
+					],
+					attributes: {
+						exclude: ["createdAt", "updatedAt"]
+					}
+				}
+			],
+			attributes: {
+				exclude: ["createdAt", "updatedAt", "order", "planId"]
+			}
+		});
+
 		encryptHelper(workout);
 
 		return res.status(200).send({
@@ -290,7 +357,6 @@ function convertDurationToWeeks(duration) {
 exports.createWeek = async (req, res) => {
 	try {
 		const schema = joi.object({
-			planId: joi.string().min(1).required(),
 			numberOfWeeks: joi.number().min(1).required()
 		});
 		const { error } = schema.validate(req.body);
@@ -298,32 +364,23 @@ exports.createWeek = async (req, res) => {
 			return res.status(400).send({ message: error.details[0].message });
 		}
 
-		// Decrypt planId
-		let planId = crypto.decrypt(req.body.planId);
-
-		// Find plan details
-		const plan = await Plan.findOne({ where: { id: planId } });
-		if (!plan) {
-			return res.status(404).send({ message: "Plan not found" });
-		}
-
-		// Convert plan duration into weeks
-		// const planWeeks = convertDurationToWeeks(plan.duration);
 		const { numberOfWeeks } = req.body;
 
-		// if (numberOfWeeks > planWeeks) {
-		// 	return res.status(400).send({
-		// 		message: `Selected number of weeks (${numberOfWeeks}) exceeds plan duration (${planWeeks} weeks)`
-		// 	});
-		// }
+		// Count already existing weeks
+		const existingWeeks = await Week.count();
 
-		// Create weeks and their workout days
+		// Calculate new target total weeks
+		const targetWeeks = existingWeeks + numberOfWeeks;
+		console.log(existingWeeks);
+		console.log(targetWeeks);
+
 		let createdWeeks = [];
-		for (let i = 1; i <= numberOfWeeks; i++) {
+		for (let i = existingWeeks + 1; i <= targetWeeks; i++) {
 			const week = await Week.create({
 				title: `Week ${i}`
 			});
 
+			// Create 5 workout days for each week
 			const days = Array.from({ length: 5 }, (_, idx) => ({
 				dayNumber: idx + 1,
 				title: `Workout Day ${idx + 1}`,
@@ -336,7 +393,8 @@ exports.createWeek = async (req, res) => {
 		}
 
 		return res.status(200).send({
-			message: "Weeks and workout days created successfully",
+			message: `${numberOfWeeks} new week(s) created successfully`,
+			totalWeeks: targetWeeks,
 			data: createdWeeks
 		});
 	} catch (err) {
@@ -345,3 +403,25 @@ exports.createWeek = async (req, res) => {
 		});
 	}
 };
+
+// utils/durationHelper.js
+function convertDurationToWeeks(duration) {
+	const [value, unit] = duration.split(" ");
+	const num = parseInt(value, 10);
+
+	if (unit.includes("month")) {
+		// Assume average month = 30.44 days (Gregorian calendar average)
+		const days = num * 30.44;
+		return Math.round(days / 7); // round to nearest full week
+	}
+
+	if (unit.includes("week")) {
+		return num;
+	}
+
+	if (unit.includes("day")) {
+		return Math.ceil(num / 7);
+	}
+
+	return 0;
+}

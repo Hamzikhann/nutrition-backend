@@ -56,6 +56,26 @@ exports.create = async (req, res) => {
 			where: { id: userId }
 		});
 
+		if (!existedUser) {
+			return res.status(400).send({
+				success: false,
+				message: "User not found"
+			});
+		}
+
+		const getPlans = await Plans.findOne({
+			where: {
+				id: crypto.decrypt(req.body.planId)
+			}
+		});
+
+		if (!getPlans) {
+			return res.status(400).send({
+				success: false,
+				message: "Plan not found"
+			});
+		}
+
 		const file = req.file;
 		const fileUrl = await uploadFileToSpaces(file, "payments");
 
@@ -88,6 +108,7 @@ exports.create = async (req, res) => {
 		await UserPlans.create(
 			{
 				userId: existedUser.id,
+				duration: getPlans.duration,
 				planId: crypto.decrypt(req.body.planId),
 				isActive: "Y"
 			},
