@@ -344,7 +344,7 @@ function convertDurationToWeeks(duration) {
 
 	if (isNaN(value)) return 0;
 
-	if (unit.startsWith("month")) {
+	if (unit.startsWith("month") || unit.startsWith("Month") || unit.startsWith("Months")) {
 		return value * 4; // approx 4 weeks per month
 	} else if (unit.startsWith("day")) {
 		return Math.floor(value / 7); // convert days to weeks
