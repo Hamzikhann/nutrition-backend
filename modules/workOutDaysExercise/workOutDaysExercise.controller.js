@@ -356,7 +356,8 @@ exports.createWeek = async (req, res) => {
 		let createdWeeks = [];
 		for (let i = existingWeeks + 1; i <= targetWeeks; i++) {
 			const week = await Week.create({
-				title: `Week ${i}`
+				title: `Week ${i}`,
+				order: i
 			});
 
 			// Create 5 workout days for each week
