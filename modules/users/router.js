@@ -74,5 +74,8 @@ router.post("/create/employee", (req, res) => {
 		res.status(403).send({ message: "Forbidden Access" });
 	}
 });
+router.post("/progress", (req, res) => {
+	usersController.getUserProgress(req, res);
+});
 
 module.exports = router;

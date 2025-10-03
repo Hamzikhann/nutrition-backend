@@ -515,3 +515,146 @@ exports.listv2 = async (req, res) => {
 		});
 	}
 };
+
+exports.getHabitProgressGraph = async (req, res) => {
+	try {
+		const schema = Joi.object({
+			userId: Joi.string().required(),
+			type: Joi.string().valid("monthly", "weekly").required()
+		});
+
+		const { error, value } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({ message: error.details[0].message });
+		}
+
+		const userId = crypto.decrypt(req.body.userId);
+		const { type } = req.body;
+
+		// Get user's mandatory habits
+		const habits = await Habits.findAll({
+			where: {
+				isActive: "Y",
+				userId: [1, userId], // global + personal
+				mandatory: "Y"
+			}
+		});
+
+		const habitIds = habits.map((h) => h.id);
+		const totalHabits = habits.length;
+
+		if (totalHabits === 0) {
+			return res.status(200).send({
+				message: "No mandatory habits found",
+				data: []
+			});
+		}
+
+		// Dates
+		const now = new Date();
+		const currentMonth = now.getMonth();
+		const currentYear = now.getFullYear();
+		const monthStart = new Date(currentYear, currentMonth, 1);
+		const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+
+		const weekStart = new Date(now);
+		weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+		weekStart.setHours(0, 0, 0, 0);
+		const weekEnd = new Date(weekStart);
+		weekEnd.setDate(weekStart.getDate() + 6); // Sunday
+		weekEnd.setHours(23, 59, 59, 999);
+
+		// Query completions once for month/week
+		let completions = [];
+		if (type === "monthly") {
+			completions = await HabitCompletions.findAll({
+				where: {
+					habitId: habitIds,
+					userId,
+					status: "Completed",
+					updatedAt: { [Op.between]: [monthStart, monthEnd] }
+				}
+			});
+		} else if (type === "weekly") {
+			completions = await HabitCompletions.findAll({
+				where: {
+					habitId: habitIds,
+					userId,
+					status: "Completed",
+					updatedAt: { [Op.between]: [weekStart, weekEnd] }
+				}
+			});
+		}
+
+		let responseData = [];
+
+		// --- Monthly ---
+		if (type === "monthly") {
+			const weeksInMonth = Math.ceil((monthEnd.getDate() - monthStart.getDate() + 1) / 7);
+
+			for (let week = 0; week < weeksInMonth; week++) {
+				const weekStartDate = new Date(monthStart);
+				weekStartDate.setDate(monthStart.getDate() + week * 7);
+				const weekEndDate = new Date(weekStartDate);
+				weekEndDate.setDate(weekStartDate.getDate() + 6);
+				if (weekEndDate > monthEnd) weekEndDate.setTime(monthEnd.getTime());
+
+				const weekCompletionsCount = completions.filter((c) => {
+					const date = new Date(c.updatedAt);
+					return date >= weekStartDate && date <= weekEndDate;
+				}).length;
+
+				const totalPossible =
+					totalHabits * Math.min(7, Math.ceil((weekEndDate - weekStartDate) / (1000 * 60 * 60 * 24)) + 1);
+				const percentage = totalPossible > 0 ? Math.round((weekCompletionsCount / totalPossible) * 100) : 0;
+
+				responseData.push({
+					week: week + 1,
+					completed: weekCompletionsCount,
+					total: totalPossible,
+					percentage: Math.min(percentage, 100),
+					startDate: weekStartDate.toISOString().split("T")[0],
+					endDate: weekEndDate.toISOString().split("T")[0]
+				});
+			}
+		}
+
+		// --- Weekly ---
+		if (type === "weekly") {
+			for (let day = 0; day < 7; day++) {
+				const dayDate = new Date(weekStart);
+				dayDate.setDate(weekStart.getDate() + day);
+				const dayStart = new Date(dayDate);
+				dayStart.setHours(0, 0, 0, 0);
+				const dayEnd = new Date(dayDate);
+				dayEnd.setHours(23, 59, 59, 999);
+
+				const dayCompletionsCount = completions.filter((c) => {
+					const date = new Date(c.updatedAt);
+					return date >= dayStart && date <= dayEnd;
+				}).length;
+
+				const percentage = totalHabits > 0 ? Math.round((dayCompletionsCount / totalHabits) * 100) : 0;
+
+				responseData.push({
+					day: dayDate.toLocaleDateString("en-US", { weekday: "short" }),
+					date: dayDate.toISOString().split("T")[0],
+					completed: dayCompletionsCount,
+					total: totalHabits,
+					percentage: Math.min(percentage, 100)
+				});
+			}
+		}
+
+		return res.status(200).send({
+			message: `Habit progress ${type} data retrieved successfully`,
+			data: responseData
+		});
+	} catch (err) {
+		console.log(err);
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while retrieving habit progress graph."
+		});
+	}
+};

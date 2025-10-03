@@ -22,6 +22,12 @@ const UserAssesmentFormFiles = db.userAssesmentFormFiles;
 
 const SupplementsCategories = db.supplementsCategories;
 const AssignedSupplements = db.assignedSupplements;
+const Week = db.weeks;
+const WorkOutDayExercises = db.workoutDayExercises;
+const WorkoutsCompletions = db.workoutsCompletions;
+const UserHabits = db.userHabits;
+const Habits = db.habits;
+const HabitsCompletions = db.habitsCompletions;
 exports.updateStatus = async (req, res) => {
 	try {
 		const joiSchema = Joi.object({
@@ -150,6 +156,81 @@ exports.create = async (req, res) => {
 		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred."
+		});
+	}
+};
+
+exports.getUserProgress = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			userId: Joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		}
+
+		const userId = crypto.decrypt(req.body.userId);
+
+		// Get user's plan
+		const userPlan = await UserPlans.findOne({
+			where: { userId },
+			include: [{ model: Plan }]
+		});
+
+		if (!userPlan) {
+			return res.status(200).send({
+				message: "User progress retrieved successfully",
+				data: {
+					totalWorkouts: 0,
+					completedWorkouts: 0,
+					habits: []
+				}
+			});
+		}
+
+		// const planId = userPlan.planId;
+		const durationWeeks = convertDurationToWeeks(userPlan.duration);
+
+		// Get weeks for the plan
+		const weeks = await Week.findAll({
+			where: {
+				order: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
+			}
+		});
+		const weekIds = weeks.map((w) => w.id);
+
+		// Total workouts: count exercises in those weeks
+		const totalWorkouts = await WorkOutDayExercises.count({ where: { weekId: weekIds } });
+
+		// Completed workouts: count completions for the user
+		const completedWorkouts = await WorkoutsCompletions.count({ where: { userId } });
+
+		// Get habits
+		const userHabits = await Habits.findAll({
+			where: { mandatory: true, isActive: "Y" },
+			include: [{ model: HabitsCompletions, required: true }]
+		});
+
+		const habits = userHabits.map((uh) => ({
+			name: uh.habit.name,
+			completed: uh.habitsCompletions && uh.habitsCompletions.length > 0
+		}));
+
+		return res.status(200).send({
+			message: "User progress retrieved successfully",
+			data: {
+				totalWorkouts,
+				completedWorkouts,
+				habits
+			}
+		});
+	} catch (err) {
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while retrieving user progress."
 		});
 	}
 };
@@ -353,6 +434,7 @@ exports.listUsers = (req, res) => {
 
 		Users.findAll({
 			// where,
+
 			include: [
 				// {
 				// 	model: UserProfile,
@@ -360,7 +442,7 @@ exports.listUsers = (req, res) => {
 				// },
 				{
 					model: Roles,
-					where: { isActive: "Y" },
+					where: { isActive: "Y", id: [1, 2] },
 					attributes: ["title"]
 				},
 				{
@@ -761,3 +843,24 @@ exports.createEmployee = async (req, res) => {
 		});
 	}
 };
+
+function convertDurationToWeeks(duration) {
+	const [value, unit] = duration.split(" ");
+	const num = parseInt(value, 10);
+
+	if (unit.startsWith("month") || unit.startsWith("Month") || unit.startsWith("Months")) {
+		// Assume average month = 30.44 days (Gregorian calendar average)
+		const days = num * 30.44;
+		return Math.round(days / 7); // round to nearest full week
+	}
+
+	if (unit.includes("week")) {
+		return num;
+	}
+
+	if (unit.includes("day")) {
+		return Math.ceil(num / 7);
+	}
+
+	return 0;
+}
