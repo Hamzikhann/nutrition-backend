@@ -18,8 +18,9 @@ module.exports = (sequelize, DataTypes) => {
 		"communityLikes",
 		{
 			reactionType: {
-				type: DataTypes.ENUM("like", "love", "haha", "wow", "sad", "angry"),
-				allowNull: false
+				type: DataTypes.ENUM("love"),
+				allowNull: false,
+				defaultValue: "love"
 			}
 		},
 		{

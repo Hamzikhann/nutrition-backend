@@ -27,7 +27,8 @@ exports.listofAdmin = async (req, res) => {
 									}
 								},
 								{
-									model: WorkoutsCompletions
+									model: WorkoutsCompletions,
+									required: false
 								}
 							],
 							attributes: {
@@ -92,7 +93,8 @@ exports.list = async (req, res) => {
 									}
 								},
 								{
-									model: WorkoutsCompletions
+									model: WorkoutsCompletions,
+									required: false
 								}
 							],
 							attributes: {

@@ -5,8 +5,9 @@ module.exports = (sequelize, DataTypes) => {
 		"communitylikesCounter",
 		{
 			reactionType: {
-				type: DataTypes.ENUM("like", "love", "haha", "wow", "sad", "angry", "smile"),
-				allowNull: false
+				type: DataTypes.ENUM("love"),
+				allowNull: false,
+				defaultValue: "love"
 			},
 			count: {
 				type: DataTypes.INTEGER,

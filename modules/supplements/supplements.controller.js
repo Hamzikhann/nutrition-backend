@@ -113,7 +113,7 @@ exports.list = async (req, res) => {
 		// 4️⃣ Fetch categories (with supplements inside)
 		const response = await SupplementsCategories.findAll({
 			where: whereCondition,
-			include: [{ where: { isActive: "Y" }, model: Supplements,required:false }]
+			include: [{ where: { isActive: "Y" }, model: Supplements, required: false }]
 		});
 
 		encryptHelper(response);
@@ -166,31 +166,52 @@ exports.assignSupplementToCategory = async (req, res) => {
 		}
 
 		let { supplementCategoryId, userId } = req.body;
+		const decryptedUserId = crypto.decrypt(userId);
+		const decryptedIds = supplementCategoryId.map((id) => crypto.decrypt(id).toString());
 
-		let ids = supplementCategoryId.map((element) => crypto.decrypt(element));
+		await db.sequelize.transaction(async (transaction) => {
+			// Step 1: Deactivate all current assignments
+			await AssignedSupplements.update(
+				{ isActive: "N" },
+				{
+					where: {
+						userId: decryptedUserId,
+						isActive: "Y"
+					},
+					transaction
+				}
+			);
 
-		const category = await SupplementsCategories.findAll({
-			where: {
-				id: ids
+			// Step 2: For each requested category, activate existing or create new
+			for (const categoryId of decryptedIds) {
+				const [assignment] = await AssignedSupplements.findOrCreate({
+					where: {
+						userId: decryptedUserId,
+						supplementsCategoryId: categoryId
+					},
+					defaults: {
+						userId: decryptedUserId,
+						supplementsCategoryId: categoryId,
+						isActive: "Y"
+					},
+					transaction
+				});
+
+				// If it existed but was inactive, activate it
+				if (assignment.isActive !== "Y") {
+					await assignment.update({ isActive: "Y" }, { transaction });
+				}
 			}
 		});
 
-		if (!category) {
-			return res.status(400).send({ message: "Category not found" });
-		}
-
-		ids.forEach(async (element) => {
-			await AssignedSupplements.create({
-				supplementsCategoryId: element,
-				userId: crypto.decrypt(userId)
-			});
+		res.status(200).send({
+			message: "Supplement assignments updated successfully",
+			assignedCategories: decryptedIds
 		});
-
-		res.status(200).send({ message: "Supplement assigned to user" });
 	} catch (err) {
-		// emails.errorEmail(req, err);
+		console.error("Error in assignSupplementToCategory:", err);
 		res.status(500).send({
-			message: err.message || "Some error occurred while reassigning the booking."
+			message: err.message || "An error occurred while updating supplement assignments."
 		});
 	}
 };

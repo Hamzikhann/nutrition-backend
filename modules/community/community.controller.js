@@ -13,7 +13,7 @@ const CommunityLikes = db.communityLikes;
 const CommunityLikesCounter = db.communitylikesCounter;
 const CommunityComments = db.communityComments;
 const User = db.users;
-
+const CommunityPostMedia = db.communityPostMedia;
 exports.createCategory = async (req, res) => {
 	try {
 		const joiSchema = joi.object({
@@ -55,64 +55,92 @@ exports.createCategory = async (req, res) => {
 };
 
 exports.createPost = async (req, res) => {
+	let transaction;
 	try {
 		const schema = joi.object({
 			categoryId: joi.string().required(),
 			title: joi.string().required(),
 			content: joi.string().required(),
-			access: joi.string().optional().allow("").allow(null)
+			access: joi.boolean().optional().default(false) // Better to use boolean
 		});
+
 		const { error, value } = schema.validate(req.body);
 		if (error) {
 			return res.status(400).send({
 				message: error.details[0].message
 			});
 		}
-		const { categoryId, title, content } = value;
-		const userId = crypto.decrypt(req.userId);
 
-		// if (!req.file) {
-		// 	res.status(400).json({
-		// 		message: "Image is required"
-		// 	});
-		// }
+		const { categoryId, title, content, access } = value;
+		const userId = crypto.decrypt(req.userId);
+		const decryptedCategoryId = crypto.decrypt(categoryId);
+
+		// Start transaction
+		transaction = await db.sequelize.transaction();
+
+		// Check category exists
 		const category = await CommunityCategories.findOne({
-			where: {
-				id: crypto.decrypt(categoryId)
-			}
+			where: { id: decryptedCategoryId },
+			transaction
 		});
 
-		if (category.title == "Announcements" && req.role != "Administrator") {
-			return res.status(400).json({
-				message: "Only admin can create announcements"
-			});
-		}
-
 		if (!category) {
+			await transaction.rollback();
 			return res.status(400).json({
 				message: "Category not found"
 			});
 		}
-		let imageUrl = "";
-		if (req.file) {
-			imageUrl = await uploadFileToSpaces(req.file, "communityPosts");
+
+		// Check admin permissions for Announcements
+		if (category.title == "Announcements" && req.role != "Administrator") {
+			await transaction.rollback();
+			return res.status(403).json({
+				message: "Only admin can create announcements"
+			});
 		}
 
-		const post = await CommunityPosts.create({
-			communityCategoryId: crypto.decrypt(categoryId),
-			title,
-			content,
-			image: imageUrl ? imageUrl : "",
-			access: value.access ? value.access == "true" : "false",
-			userId
-		});
+		// Create post
+		const post = await CommunityPosts.create(
+			{
+				communityCategoryId: decryptedCategoryId,
+				title,
+				content,
+				access: access ? "true" : "false", // Convert boolean to string if needed
+				userId
+			},
+			{ transaction }
+		);
+
+		let mediaObj = [];
+
+		// Handle multiple files - FIX: use req.files instead of req.file
+		if (req.files && req.files.length > 0) {
+			for (let i = 0; i < req.files.length; i++) {
+				let obj = {
+					communityPostId: post.id,
+					media: await uploadFileToSpaces(req.files[i], "communityPosts") // Changed from imageUrl to media
+				};
+				mediaObj.push(obj);
+			}
+
+			if (mediaObj.length > 0) {
+				await CommunityPostMedia.bulkCreate(mediaObj, { transaction });
+			}
+		}
+
+		// Commit transaction
+		await transaction.commit();
+
 		encryptHelper(post);
 		res.status(200).json({
 			message: "Post created successfully",
 			post
 		});
 	} catch (err) {
-		console.log(err);
+		// Rollback transaction if it exists
+		if (transaction) await transaction.rollback();
+
+		console.log("Error in createPost:", err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -121,7 +149,7 @@ exports.createPost = async (req, res) => {
 
 exports.listCategories = async (req, res) => {
 	try {
-		const categories = await CommunityCategories.findAll();
+		const categories = await CommunityCategories.findAll({ where: { isActive: "Y" } });
 		encryptHelper(categories);
 		res.status(200).json({
 			message: "Categories list",
@@ -137,20 +165,27 @@ exports.listCategories = async (req, res) => {
 
 exports.listPosts = async (req, res) => {
 	try {
-		// Expecting a query param or body param: YYYY-MM-DD
-		const { date } = req.body; // or req.body
+		const { date } = req.body; // This is in user's local timezone (e.g., "2024-01-15")
 
 		let whereCondition = { isActive: "Y" };
 		if (date) {
-			// Normalize to cover the whole day
-			const startOfDay = new Date(date);
-			startOfDay.setHours(0, 0, 0, 0);
+			// The date comes from user's device in their local timezone
+			// We need to convert it to UTC for proper comparison with server-stored dates
 
-			const endOfDay = new Date(date);
-			endOfDay.setHours(23, 59, 59, 999);
+			// Get user's timezone offset (you might need to send this from frontend)
+			// For now, we'll use the device's local timezone
+			const userTimezoneOffset = new Date().getTimezoneOffset() * 60 * 1000; // in milliseconds
+
+			// Create start and end of day in user's local timezone
+			const startOfDayLocal = new Date(date + "T00:00:00");
+			const endOfDayLocal = new Date(date + "T23:59:59.999");
+
+			// Convert to UTC for database comparison
+			const startOfDayUTC = new Date(startOfDayLocal.getTime() - userTimezoneOffset);
+			const endOfDayUTC = new Date(endOfDayLocal.getTime() - userTimezoneOffset);
 
 			whereCondition.createdAt = {
-				[Op.between]: [startOfDay, endOfDay]
+				[Op.between]: [startOfDayUTC, endOfDayUTC]
 			};
 		}
 
@@ -158,10 +193,10 @@ exports.listPosts = async (req, res) => {
 			include: [
 				{
 					model: CommunityPosts,
-					where: whereCondition, // ✅ filter posts by date
+					where: whereCondition,
 					include: [
 						{
-							model: CommunityLikes, // all user reactions
+							model: CommunityLikes,
 							include: [
 								{
 									model: db.users,
@@ -176,12 +211,18 @@ exports.listPosts = async (req, res) => {
 							]
 						},
 						{
-							model: CommunityLikesCounter, // aggregated counters
+							model: CommunityLikesCounter,
 							attributes: ["reactionType", "count"]
+						},
+						{
+							model: CommunityPostMedia,
+							required: false,
+							where: { isActive: "Y" }
 						}
 					]
 				}
-			]
+			],
+			order: [["createdAt", "DESC"]]
 		});
 
 		encryptHelper(posts);
@@ -197,7 +238,6 @@ exports.listPosts = async (req, res) => {
 		});
 	}
 };
-
 exports.detail = async (req, res) => {
 	try {
 		const joiSchema = joi.object({
@@ -245,8 +285,14 @@ exports.detail = async (req, res) => {
 						attributes: ["id", "firstName", "lastName"],
 
 						include: [{ model: db.roles, attributes: ["title"] }]
+					},
+					{
+						model: CommunityPostMedia,
+						required: false,
+						where: { isActive: "Y" }
 					}
-				]
+				],
+				order: [["createdAt", "DESC"]]
 			});
 
 			// Add comment counts manually
@@ -317,57 +363,166 @@ exports.deletePost = async (req, res) => {
 };
 
 exports.updatePost = async (req, res) => {
+	let transaction;
 	try {
 		const joiSchema = joi.object({
 			postId: joi.string().required(),
 			title: joi.string().required(),
 			content: joi.string().required(),
 			categoryId: joi.string().required(),
-			access: joi.string().optional().allow("").allow(null)
+			access: joi.string().optional().allow("").allow(null),
+			imagesToRemove: joi.string().optional().allow("") // Array of image IDs to remove
 		});
 		const { error, value } = joiSchema.validate(req.body);
 		if (error) {
 			return res.status(400).send({
 				message: error.details[0].message
 			});
-		} else {
-			const post = await CommunityPosts.findOne({
-				where: {
-					id: crypto.decrypt(value.postId)
-				}
-			});
-			if (!post) {
-				return res.status(400).json({
-					message: "Post not found"
-				});
-			}
+		}
 
-			let updateObj = {
-				title: value.title,
-				content: value.content,
-				communityCategoryId: crypto.decrypt(value.categoryId),
-				access: value.access
-			};
+		const decryptedPostId = crypto.decrypt(value.postId);
 
-			if (req.file) {
-				let media = await uploadFileToSpaces(req.file, "communityPosts");
-				updateObj.image = media;
-			}
-			console.log(updateObj);
-			await CommunityPosts.update(updateObj, {
-				where: {
-					id: crypto.decrypt(value.postId)
-				}
-			});
+		// Start transaction
+		transaction = await db.sequelize.transaction();
 
-			return res.status(200).json({
-				message: "Post updated successfully"
+		const post = await CommunityPosts.findOne({
+			where: {
+				id: decryptedPostId
+			},
+			transaction
+		});
+
+		if (!post) {
+			await transaction.rollback();
+			return res.status(400).json({
+				message: "Post not found"
 			});
 		}
+
+		let updateObj = {
+			title: value.title,
+			content: value.content,
+			communityCategoryId: crypto.decrypt(value.categoryId),
+			access: value.access
+		};
+
+		console.log("Received imagesToRemove:", value.imagesToRemove);
+
+		// Handle image removal
+		if (value.imagesToRemove && value.imagesToRemove.trim() !== "") {
+			try {
+				const imagesToRemove = JSON.parse(value.imagesToRemove);
+				console.log("Parsed imagesToRemove:", imagesToRemove);
+
+				if (Array.isArray(imagesToRemove) && imagesToRemove.length > 0) {
+					// Remove duplicates (you had duplicate IDs in your payload)
+					const uniqueImagesToRemove = [...new Set(imagesToRemove)];
+					console.log("Unique images to remove:", uniqueImagesToRemove);
+
+					// Remove old main image if it's in the removal list
+					if (uniqueImagesToRemove.includes("old-main-image")) {
+						console.log("Removing old main image");
+						updateObj.image = null; // Clear the old image field
+					}
+
+					// Remove images from CommunityPostMedia table
+					const mediaIdsToRemove = uniqueImagesToRemove.filter((id) => id !== "old-main-image");
+					console.log("Media IDs to remove:", mediaIdsToRemove);
+
+					if (mediaIdsToRemove.length > 0) {
+						// Decrypt the media IDs if they're encrypted
+						const decryptedMediaIds = mediaIdsToRemove
+							.map((id) => {
+								try {
+									return crypto.decrypt(id);
+								} catch (decryptError) {
+									console.log("Error decrypting media ID:", id, decryptError);
+									return null;
+								}
+							})
+							.filter((id) => id !== null);
+
+						console.log("Decrypted media IDs to remove:", decryptedMediaIds);
+
+						if (decryptedMediaIds.length > 0) {
+							await CommunityPostMedia.update(
+								{ isActive: "N" },
+								{
+									where: {
+										id: decryptedMediaIds,
+										communityPostId: decryptedPostId
+									},
+									transaction
+								}
+							);
+							console.log(`Soft deleted ${decryptedMediaIds.length} media records`);
+						}
+					}
+				}
+			} catch (parseError) {
+				console.log("Error parsing imagesToRemove:", parseError);
+				// Continue without removing images if parsing fails
+			}
+		}
+
+		let mediaObj = [];
+
+		// Handle new file uploads - FIX: use req.files instead of req.file
+		if (req.files && req.files.length > 0) {
+			console.log(`Processing ${req.files.length} new files`);
+			for (let i = 0; i < req.files.length; i++) {
+				try {
+					const mediaUrl = await uploadFileToSpaces(req.files[i], "communityPosts");
+					let obj = {
+						communityPostId: decryptedPostId,
+						media: mediaUrl
+					};
+					mediaObj.push(obj);
+					console.log(`Uploaded file ${i + 1}: ${mediaUrl}`);
+				} catch (uploadError) {
+					console.log(`Error uploading file ${i + 1}:`, uploadError);
+					// Continue with other files if one fails
+				}
+			}
+		}
+
+		console.log("Update object:", updateObj);
+
+		// Update post
+		const [updatedCount] = await CommunityPosts.update(updateObj, {
+			where: {
+				id: decryptedPostId
+			},
+			transaction
+		});
+		console.log(`Updated ${updatedCount} post record(s)`);
+
+		// Add new media
+		if (mediaObj.length > 0) {
+			const createdMedia = await CommunityPostMedia.bulkCreate(mediaObj, { transaction });
+			console.log(`Created ${createdMedia.length} new media records`);
+		}
+
+		// Commit transaction
+		await transaction.commit();
+
+		return res.status(200).json({
+			message: "Post updated successfully",
+			updated: true,
+			imagesRemoved: value.imagesToRemove ? JSON.parse(value.imagesToRemove).length : 0,
+			imagesAdded: mediaObj.length
+		});
 	} catch (err) {
-		console.log(err);
+		// Rollback transaction if it exists
+		if (transaction) {
+			console.log("Rolling back transaction due to error");
+			await transaction.rollback();
+		}
+
+		console.log("Error in updatePost:", err);
 		res.status(500).json({
-			message: "Internal server error"
+			message: "Internal server error",
+			error: err.message
 		});
 	}
 };
@@ -441,15 +596,18 @@ exports.deleteCategory = async (req, res) => {
 					message: "Category not found"
 				});
 			}
-				let updateCategory=await CommunityCategories.update({
-					isActive:"N"
-				},{
-					where:{
-						id:crypto.decrypt(req.body.id)
+			let updateCategory = await CommunityCategories.update(
+				{
+					isActive: "N"
+				},
+				{
+					where: {
+						id: crypto.decrypt(req.body.id)
 					}
-				})
+				}
+			);
 
-				return res.status(201).send({message:"Group Deleted"})
+			return res.status(201).send({ message: "Group Deleted" });
 		}
 	} catch (err) {
 		console.log(err);

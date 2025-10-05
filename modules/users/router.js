@@ -43,13 +43,13 @@ router.post("/create", upload.single("image"), (req, res) => {
 // router.post("/update/password", usersController.changePassword);
 // router.post("/detail", usersController.detail);
 
-// router.post("/delete", (req, res) => {
-// 	if (req.role == "Administrator" || req.role == "Client") {
-// 		usersController.delete(req, res);
-// 	} else {
-// 		res.status(403).send({ message: "Forbidden Access" });
-// 	}
-// });
+router.post("/delete", (req, res) => {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		usersController.delete(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
+});
 
 // router.post("/reset/credentials", (req, res) => {
 // 	if (req.role == "Administrator" || req.role == "Client") {

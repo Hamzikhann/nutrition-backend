@@ -23,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
 		table.hasMany(models.communityComments);
 		table.hasMany(models.communityLikes);
 		table.hasMany(models.communitylikesCounter);
+		table.hasMany(models.communityPostMedia);
 	};
 
 	return table;

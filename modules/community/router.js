@@ -16,7 +16,7 @@ router.post("/create/category", (req, res) => {
 	}
 });
 
-router.post("/create/post", upload.single("image"), (req, res) => {
+router.post("/create/post", upload.array("images", 10), (req, res) => {
 	communityController.createPost(req, res);
 });
 
@@ -41,7 +41,7 @@ router.post("/delete/post", (req, res) => {
 		});
 	}
 });
-router.post("/update/post", upload.single("image"), (req, res) => {
+router.post("/update/post", upload.array("images"), (req, res) => {
 	if (req.role == "Administrator" || req.role == "Subadmin") {
 		communityController.updatePost(req, res);
 	} else {

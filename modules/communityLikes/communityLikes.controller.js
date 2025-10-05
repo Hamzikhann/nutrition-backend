@@ -17,9 +17,10 @@ const CommunityLikesCounter = db.communitylikesCounter;
 exports.addOrUpdateReaction = async (req, res) => {
 	const t = await sequelize.transaction();
 	try {
-		let { postId, reactionType } = req.body;
+		let { postId } = req.body;
 		postId = crypto.decrypt(postId);
 		let userId = crypto.decrypt(req.userId);
+		const reactionType = "love";
 
 		// Lock the user's reaction row for this post to avoid race conditions
 		let existing = await CommunityLikes.findOne({
@@ -28,37 +29,7 @@ exports.addOrUpdateReaction = async (req, res) => {
 			lock: t.LOCK.UPDATE
 		});
 
-		if (existing) {
-			if (existing.reactionType !== reactionType) {
-				// decrement old
-				await CommunityLikesCounter.increment(
-					{ count: -1 },
-					{
-						where: { communityPostId: postId, reactionType: existing.reactionType },
-						transaction: t
-					}
-				);
-
-				// ensure target counter row exists, then increment
-				await CommunityLikesCounter.findOrCreate({
-					where: { communityPostId: postId, reactionType },
-					defaults: { count: 0 },
-					transaction: t,
-					lock: t.LOCK.UPDATE
-				});
-				await CommunityLikesCounter.increment(
-					{ count: 1 },
-					{
-						where: { communityPostId: postId, reactionType },
-						transaction: t
-					}
-				);
-
-				existing.reactionType = reactionType;
-				await existing.save({ transaction: t });
-			}
-			// else same reaction → no-op
-		} else {
+		if (!existing) {
 			// create reaction
 			await CommunityLikes.create({ communityPostId: postId, userId, reactionType }, { transaction: t });
 
@@ -77,6 +48,7 @@ exports.addOrUpdateReaction = async (req, res) => {
 				}
 			);
 		}
+		// else same reaction → no-op
 
 		await t.commit();
 
@@ -132,16 +104,17 @@ exports.removeReaction = async (req, res) => {
 			return res.status(200).json({ success: true, postId, counts: [] });
 		}
 
+		await existing.destroy({ transaction: t });
+
 		// decrement count for existing type
 		await CommunityLikesCounter.increment(
 			{ count: -1 },
 			{
-				where: { communityPostId: postId, reactionType: existing.reactionType },
+				where: { communityPostId: postId, reactionType: "love" },
 				transaction: t
 			}
 		);
 
-		await existing.destroy({ transaction: t });
 		await t.commit();
 
 		// fetch counts
