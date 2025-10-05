@@ -441,6 +441,15 @@ exports.deleteCategory = async (req, res) => {
 					message: "Category not found"
 				});
 			}
+				let updateCategory=await CommunityCategories.update({
+					isActive:"N"
+				},{
+					where:{
+						id:crypto.decrypt(req.body.id)
+					}
+				})
+
+				return res.status(201).send({message:"Group Deleted"})
 		}
 	} catch (err) {
 		console.log(err);
