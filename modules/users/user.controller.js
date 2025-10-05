@@ -464,6 +464,7 @@ exports.listUsers = (req, res) => {
 				{
 					model: AssignedSupplements,
 					where: { isActive: "Y" },
+					required: false,
 					inlude: [
 						{
 							model: SupplementsCategories,
