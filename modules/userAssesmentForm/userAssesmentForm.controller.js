@@ -138,28 +138,28 @@ exports.create = async (req, res) => {
 		console.log(adjustedBmr);
 		console.log(bmr);
 		// Find meal plans that match the calculated kcal
-		const matchingMeals = await Meals.findAll({
-			where: {
-				isActive: "Y",
-				[Op.and]: [literal(`CONCAT(',', kcalOptions, ',') LIKE '%,${kcalPlan},%'`)]
-			},
-			attributes: {
-				exclude: ["isActive", "createdAt", "updatedAt"]
-			}
-		}); // Assign meals to user in assignedMeals table
-		for (const meal of matchingMeals) {
-			await AssignedMeals.create(
-				{
-					userId,
-					mealId: meal.id,
-					assessmentId: userAssessmentFormData.id,
-					mealTypeId: meal.mealTypeId,
-					calculatedKcal: kcalPlan,
-					userAssesmentFormId: userAssessmentFormData.id
-				},
-				{ transaction: t }
-			);
-		}
+		// const matchingMeals = await Meals.findAll({
+		// 	where: {
+		// 		isActive: "Y",
+		// 		[Op.and]: [literal(`CONCAT(',', kcalOptions, ',') LIKE '%,${kcalPlan},%'`)]
+		// 	},
+		// 	attributes: {
+		// 		exclude: ["isActive", "createdAt", "updatedAt"]
+		// 	}
+		// }); // Assign meals to user in assignedMeals table
+		// for (const meal of matchingMeals) {
+		// 	await AssignedMeals.create(
+		// 		{
+		// 			userId,
+		// 			mealId: meal.id,
+		// 			assessmentId: userAssessmentFormData.id,
+		// 			mealTypeId: meal.mealTypeId,
+		// 			calculatedKcal: kcalPlan,
+		// 			userAssesmentFormId: userAssessmentFormData.id
+		// 		},
+		// 		{ transaction: t }
+		// 	);
+		// }
 
 		// Commit before fetching complete data
 		await t.commit();
@@ -171,6 +171,7 @@ exports.create = async (req, res) => {
 			{
 				firstName: firstName,
 				lastName: lastName,
+				bmr: kcalPlan,
 				isFormCreated: "Y"
 			},
 			{ where: { id: userId } }

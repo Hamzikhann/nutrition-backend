@@ -125,27 +125,78 @@ exports.list = async (req, res) => {
 				required: true
 			}
 		];
-		// For non-administrator users, filter by assigned meals
+
+		let meals;
+
+		// For non-administrator users, filter by BMR
 		if (role !== "Administrator") {
-			includeClause.push({
-				model: db.assignedMeals,
-				where: { isActive: "Y", userId: crypto.decrypt(req.userId) },
-				required: true // Use INNER JOIN to only get meals that are assigned to the user
+			// Get user's BMR value
+			const userId = crypto.decrypt(req.userId);
+			const user = await db.users.findOne({
+				where: { id: userId, isActive: "Y" },
+				attributes: ["bmr"] // Assuming BMR is stored in users table
+			});
+
+			if (!user || !user.bmr) {
+				return res.status(400).send({
+					message: "User BMR not found"
+				});
+			}
+
+			const userBMR = user.bmr;
+			console.log(`Filtering meals for user BMR: ${userBMR}`);
+
+			// Get all meals first
+			const allMeals = await db.meals.findAll({
+				where: whereClause,
+				include: includeClause,
+				attributes: {
+					exclude: ["isActive", "createdAt", "updatedAt"]
+				}
+			});
+
+			// Filter meals based on kcalOptions matching user's BMR
+			meals = allMeals.filter((meal) => {
+				if (!meal.kcalOptions) return false;
+
+				try {
+					// Handle different formats of kcalOptions
+					let kcalArray = [];
+
+					if (typeof meal.kcalOptions === "string") {
+						// Remove quotes and split by commas
+						const cleanKcalOptions = meal.kcalOptions.replace(/"/g, "");
+						kcalArray = cleanKcalOptions.split(",").map((kcal) => kcal.trim());
+					} else if (Array.isArray(meal.kcalOptions)) {
+						kcalArray = meal.kcalOptions;
+					}
+
+					// Convert to numbers and check if user's BMR matches any kcal option
+					const numericKcalArray = kcalArray.map((kcal) => parseInt(kcal));
+					return numericKcalArray.includes(parseInt(userBMR));
+				} catch (error) {
+					console.log("Error processing kcalOptions for meal:", meal.id, error);
+					return false;
+				}
+			});
+
+			console.log(`Found ${meals.length} meals matching user BMR: ${userBMR}`);
+		} else {
+			// For administrators, get all meals
+			meals = await db.meals.findAll({
+				where: whereClause,
+				include: includeClause,
+				attributes: {
+					exclude: ["isActive", "createdAt", "updatedAt"]
+				}
 			});
 		}
-
-		const meals = await db.meals.findAll({
-			where: whereClause,
-			include: includeClause,
-			attributes: {
-				exclude: ["isActive", "createdAt", "updatedAt"]
-			}
-		});
 
 		encryptHelper(meals);
 		return res.status(200).send({
 			message: "Meal plans retrieved successfully",
-			data: meals
+			data: meals,
+			userBMR: role !== "Administrator" ? userBMR : undefined
 		});
 	} catch (err) {
 		console.log(err);
@@ -154,7 +205,6 @@ exports.list = async (req, res) => {
 		});
 	}
 };
-
 exports.update = async (req, res) => {
 	const t = await sequelize.transaction();
 

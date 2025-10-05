@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				defaultValue: "N"
 			},
+			bmr: DataTypes.STRING,
 			password: DataTypes.STRING,
 			imageURL: DataTypes.STRING,
 			fcmToken: DataTypes.TEXT,
