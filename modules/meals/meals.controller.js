@@ -136,7 +136,8 @@ exports.list = async (req, res) => {
 				where: { id: userId, isActive: "Y" },
 				attributes: ["bmr"] // Assuming BMR is stored in users table
 			});
-
+			console.log(userId);
+			console.log(user);
 			if (!user || !user.bmr) {
 				return res.status(400).send({
 					message: "User BMR not found"
