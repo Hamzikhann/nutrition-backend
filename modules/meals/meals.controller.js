@@ -144,7 +144,7 @@ exports.list = async (req, res) => {
 				});
 			}
 
-			const userBMR = user.bmr;
+			var userBMR = user.bmr;
 			console.log(`Filtering meals for user BMR: ${userBMR}`);
 
 			// Get all meals first
