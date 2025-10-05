@@ -448,10 +448,12 @@ exports.listUsers = (req, res) => {
 				},
 				{
 					model: UserPlans,
-					include: [{ model: Plan }]
+					include: [{ model: Plan }],
+					required: false
 				},
 				{
-					model: Payment
+					model: Payment,
+					required: false
 				},
 				{
 					model: UserAssesmentForm,
@@ -464,7 +466,8 @@ exports.listUsers = (req, res) => {
 					where: { isActive: "Y" },
 					inlude: [
 						{
-							model: SupplementsCategories
+							model: SupplementsCategories,
+							required: false
 						}
 					]
 				}
