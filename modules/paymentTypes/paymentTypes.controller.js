@@ -14,7 +14,7 @@ exports.create = async (req, res) => {
 			type: Joi.string().required(),
 			accountNumber: Joi.string().required(),
 			accountTitle: Joi.string().required(),
-			bankName: Joi.string().optional(),
+			bankName: Joi.string().optional().allow("").allow(null),
 			iban: Joi.string().optional().allow("").allow(null),
 			swiftCode: Joi.string().optional().allow("").allow(null),
 			isActive: Joi.boolean().optional().allow("").allow(null),

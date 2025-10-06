@@ -4,7 +4,7 @@ const encryptHelper = require("../../utils/encryptHelper");
 const joi = require("joi");
 const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
-
+const moment = require("moment-timezone");
 const { Op } = require("sequelize");
 
 const CommunityCategories = db.communityCategories;
@@ -149,17 +149,59 @@ exports.createPost = async (req, res) => {
 
 exports.listCategories = async (req, res) => {
 	try {
-		const categories = await CommunityCategories.findAll({ where: { isActive: "Y" } });
-		encryptHelper(categories);
+		const { date, timeZone } = req.body;
+
+		if (!date || !timeZone) {
+			return res.status(400).json({
+				message: "Both 'date' and 'timeZone' are required"
+			});
+		}
+
+		let whereCondition = { isActive: "Y" };
+
+		// Convert local day to UTC range
+		const startOfDayUTC = moment.tz(date, timeZone).startOf("day").utc().toDate();
+		const endOfDayUTC = moment.tz(date, timeZone).endOf("day").utc().toDate();
+
+		whereCondition.createdAt = { [Op.between]: [startOfDayUTC, endOfDayUTC] };
+
+		const posts = await CommunityCategories.findAll({
+			include: [
+				{
+					model: CommunityPosts,
+					where: whereCondition,
+					include: [
+						{
+							model: CommunityLikes,
+							include: [
+								{
+									model: db.users,
+									attributes: ["id", "firstName", "lastName"],
+									include: [{ model: db.roles, attributes: ["title"] }]
+								}
+							]
+						},
+						{ model: CommunityLikesCounter, attributes: ["reactionType", "count"] },
+						{
+							model: CommunityPostMedia,
+							required: false,
+							where: { isActive: "Y" }
+						}
+					]
+				}
+			],
+			order: [["createdAt", "DESC"]]
+		});
+
+		encryptHelper(posts);
+
 		res.status(200).json({
-			message: "Categories list",
-			categories
+			message: `Posts for ${date} (${timeZone})`,
+			posts
 		});
 	} catch (err) {
-		console.log(err);
-		res.status(500).json({
-			message: "Internal server error"
-		});
+		console.error("❌ Error in listPostsByFrontendTZ:", err);
+		res.status(500).json({ message: "Internal server error" });
 	}
 };
 
