@@ -149,27 +149,46 @@ exports.createPost = async (req, res) => {
 
 exports.listCategories = async (req, res) => {
 	try {
+		const categories = await CommunityCategories.findAll({ where: { isActive: "Y" } });
+		encryptHelper(categories);
+		res.status(200).json({
+			message: "Categories list",
+			categories
+		});
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.listPosts = async (req, res) => {
+	try {
 		const { date, timeZone } = req.body;
 
-		if (!date || !timeZone) {
-			return res.status(400).json({
-				message: "Both 'date' and 'timeZone' are required"
-			});
-		}
-
-		// Create exact start and end of user's local day, then convert to UTC
-		const startOfDayUTC = moment.tz(`${date} 00:00:00`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
-		const endOfDayUTC = moment.tz(`${date} 23:59:59.999`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
-
-		console.log(`🕒 Local day (${timeZone}): ${date}`);
-		console.log(`➡️ UTC range: ${startOfDayUTC} → ${endOfDayUTC}`);
-
 		const whereCondition = {
-			isActive: "Y",
-			createdAt: {
-				[Op.between]: [startOfDayUTC, endOfDayUTC]
-			}
+			isActive: "Y"
 		};
+
+		if (req.role !== "Administrator") {
+			if (!date || !timeZone) {
+				return res.status(400).json({
+					message: "Both 'date' and 'timeZone' are required"
+				});
+			}
+
+			// Create exact start and end of user's local day, then convert to UTC
+			const startOfDayUTC = moment.tz(`${date} 00:00:00`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
+			const endOfDayUTC = moment.tz(`${date} 23:59:59.999`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
+
+			console.log(`🕒 Local day (${timeZone}): ${date}`);
+			console.log(`➡️ UTC range: ${startOfDayUTC} → ${endOfDayUTC}`);
+
+			whereCondition.createdAt = {
+				[Op.between]: [startOfDayUTC, endOfDayUTC]
+			};
+		}
 
 		const posts = await CommunityCategories.findAll({
 			include: [
@@ -203,89 +222,12 @@ exports.listCategories = async (req, res) => {
 
 		res.status(200).json({
 			message: `Posts for ${date} (${timeZone})`,
-			rangeUTC: { start: startOfDayUTC, end: endOfDayUTC },
+			// rangeUTC: { start: startOfDayUTC, end: endOfDayUTC },
 			posts
 		});
 	} catch (err) {
 		console.error("❌ Error in listPostsByFrontendTZ:", err);
 		res.status(500).json({ message: "Internal server error" });
-	}
-};
-
-exports.listPosts = async (req, res) => {
-	try {
-		const { date } = req.body; // This is in user's local timezone (e.g., "2024-01-15")
-
-		let whereCondition = { isActive: "Y" };
-		if (date) {
-			// The date comes from user's device in their local timezone
-			// We need to convert it to UTC for proper comparison with server-stored dates
-
-			// Get user's timezone offset (you might need to send this from frontend)
-			// For now, we'll use the device's local timezone
-			const userTimezoneOffset = new Date().getTimezoneOffset() * 60 * 1000; // in milliseconds
-
-			// Create start and end of day in user's local timezone
-			const startOfDayLocal = new Date(date + "T00:00:00");
-			const endOfDayLocal = new Date(date + "T23:59:59.999");
-
-			// Convert to UTC for database comparison
-			const startOfDayUTC = new Date(startOfDayLocal.getTime() - userTimezoneOffset);
-			const endOfDayUTC = new Date(endOfDayLocal.getTime() - userTimezoneOffset);
-			console.log(startOfDayUTC, endOfDayUTC);
-
-			whereCondition.createdAt = {
-				[Op.between]: [startOfDayUTC, endOfDayUTC]
-			};
-		}
-
-		const posts = await CommunityCategories.findAll({
-			include: [
-				{
-					model: CommunityPosts,
-					where: whereCondition,
-					include: [
-						{
-							model: CommunityLikes,
-							include: [
-								{
-									model: db.users,
-									attributes: ["id", "firstName", "lastName"],
-									include: [
-										{
-											model: db.roles,
-											attributes: ["title"]
-										}
-									]
-								}
-							]
-						},
-						{
-							model: CommunityLikesCounter,
-							attributes: ["reactionType", "count"]
-						},
-						{
-							model: CommunityPostMedia,
-							required: false,
-							where: { isActive: "Y" }
-						}
-					]
-				}
-			],
-			order: [["createdAt", "DESC"]]
-		});
-
-		encryptHelper(posts);
-
-		res.status(200).json({
-			message: "Posts list",
-			posts
-		});
-	} catch (err) {
-		console.log(err);
-		res.status(500).json({
-			message: "Internal server error"
-		});
 	}
 };
 exports.detail = async (req, res) => {
