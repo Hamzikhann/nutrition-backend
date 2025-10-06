@@ -299,31 +299,31 @@ exports.updateStatus = async (req, res) => {
 			});
 		} else {
 			const { id } = value;
-			const workOutDayExercise = await WorkOutDayExercises.findOne({
+			const workOutDay = await WorkoutDays.findOne({
 				where: {
 					id: crypto.decrypt(id)
 				}
 			});
-			if (!workOutDayExercise) {
+			if (!workOutDay) {
 				return res.status(400).send({
 					message: "Work out day exercise not found"
 				});
 			}
 			let findWorkoutCompleted = await WorkoutsCompletions.findOne({
 				where: {
-					workoutDayExerciseId: crypto.decrypt(id)
+					workoutDayId: crypto.decrypt(id)
 				}
 			});
 
 			if (findWorkoutCompleted) {
 				return res.status(400).send({
-					message: "Work out day exercise already completed"
+					message: "Work out day already completed"
 				});
 			}
 			let updateWorkoutCompleted = await WorkoutsCompletions.create({
 				status: "Completed",
 				userId: crypto.decrypt(req.userId), //req.userId
-				workoutDayExerciseId: crypto.decrypt(id)
+				workoutDayId: crypto.decrypt(id)
 			});
 
 			return res.status(200).send({

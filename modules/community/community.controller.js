@@ -183,6 +183,7 @@ exports.listPosts = async (req, res) => {
 			// Convert to UTC for database comparison
 			const startOfDayUTC = new Date(startOfDayLocal.getTime() - userTimezoneOffset);
 			const endOfDayUTC = new Date(endOfDayLocal.getTime() - userTimezoneOffset);
+			console.log(startOfDayUTC, endOfDayUTC);
 
 			whereCondition.createdAt = {
 				[Op.between]: [startOfDayUTC, endOfDayUTC]

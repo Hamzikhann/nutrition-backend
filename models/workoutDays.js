@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
 		table.belongsTo(models.weeks);
 		table.hasMany(models.exercises);
 		table.hasMany(models.workoutDayExercises);
+		table.hasMany(models.workoutsCompletions);
 	};
 
 	return table;
