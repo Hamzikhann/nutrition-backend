@@ -33,22 +33,10 @@ router.post("/detail", (req, res) => {
 });
 
 router.post("/delete/post", (req, res) => {
-	if (req.role == "Administrator" || req.role == "Subadmin") {
-		communityController.deletePost(req, res);
-	} else {
-		return res.status(403).json({
-			message: "You are not authorized to delete a post"
-		});
-	}
+	communityController.deletePost(req, res);
 });
 router.post("/update/post", upload.array("images"), (req, res) => {
-	if (req.role == "Administrator" || req.role == "Subadmin") {
-		communityController.updatePost(req, res);
-	} else {
-		return res.status(403).json({
-			message: "You are not authorized to update a post"
-		});
-	}
+	communityController.updatePost(req, res);
 });
 
 router.post("/update/category", (req, res) => {

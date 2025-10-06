@@ -78,4 +78,8 @@ router.post("/progress", (req, res) => {
 	usersController.getUserProgress(req, res);
 });
 
+router.post("/habit/progress", (req, res) => {
+	usersController.getHabitProgress(req, res);
+});
+
 module.exports = router;

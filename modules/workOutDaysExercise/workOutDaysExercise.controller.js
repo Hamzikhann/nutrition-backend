@@ -25,15 +25,15 @@ exports.listofAdmin = async (req, res) => {
 									attributes: {
 										exclude: ["createdAt", "updatedAt", "workoutDayId"]
 									}
-								},
-								{
-									model: WorkoutsCompletions,
-									required: false
 								}
 							],
 							attributes: {
 								exclude: ["createdAt", "updatedAt", "exerciseId", "weekId", "workoutDayId"]
 							}
+						},
+						{
+							model: WorkoutsCompletions,
+							required: false
 						}
 					],
 					attributes: {
@@ -91,15 +91,15 @@ exports.list = async (req, res) => {
 									attributes: {
 										exclude: ["createdAt", "updatedAt", "workoutDayId"]
 									}
-								},
-								{
-									model: WorkoutsCompletions,
-									required: false
 								}
 							],
 							attributes: {
 								exclude: ["createdAt", "updatedAt", "exerciseId", "weekId", "workoutDayId"]
 							}
+						},
+						{
+							model: WorkoutsCompletions,
+							required: false
 						}
 					],
 					attributes: {

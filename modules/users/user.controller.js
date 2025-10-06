@@ -9,6 +9,7 @@ const { Op } = require("sequelize");
 // import { uploadFileToS3 } from "../../utils/awsServises";
 const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
+const moment = require("moment-timezone");
 
 const Users = db.users;
 const Roles = db.roles;
@@ -779,7 +780,9 @@ exports.createEmployee = async (req, res) => {
 			phone: Joi.string().required(),
 			role: Joi.string().required(),
 			email: Joi.string().email().required(),
-			modules: Joi.array().required()
+			modules: Joi.array().required(),
+			password: Joi.string().min(8).max(16).required(),
+			confirmPassword: Joi.string().min(8).max(16).required()
 		});
 		const { error, value } = joiSchema.validate(req.body);
 
@@ -799,47 +802,55 @@ exports.createEmployee = async (req, res) => {
 					mesage: "Email already registered."
 				});
 			} else {
-				const parts = req.body.name.trim().split(" ");
-				const firstName = parts[0];
-				const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+				if (req.body.password === req.body.confirmPassword) {
+					const parts = req.body.name.trim().split(" ");
+					const firstName = parts[0];
+					const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
 
-				const userObj = {
-					firstName: firstName?.trim(),
-					lastName: lastName?.trim(),
-					phoneNo: req.body.phone,
-					email: req.body.email,
-					roleId: crypto.decrypt(req.body.role),
-					modules: JSON.stringify(req.body.modules)
-				};
+					const userObj = {
+						firstName: firstName?.trim(),
+						lastName: lastName?.trim(),
+						phoneNo: req.body.phone,
+						email: req.body.email,
+						roleId: crypto.decrypt(req.body.role),
+						modules: JSON.stringify(req.body.modules),
+						password: req.body.password
+					};
 
-				let transaction = await sequelize.transaction();
-				Users.create(userObj, { transaction })
-					.then(async (user) => {
-						UserProfile.create({ userId: user.id }, { transaction })
-							.then(async (profile) => {
-								encryptHelper(user);
+					let transaction = await sequelize.transaction();
+					Users.create(userObj, { transaction })
+						.then(async (user) => {
+							UserProfile.create({ userId: user.id }, { transaction })
+								.then(async (profile) => {
+									encryptHelper(user);
 
-								await transaction.commit();
-								return res.status(200).send({
-									message: "User created successfully.",
-									data: user
+									await transaction.commit();
+									return res.status(200).send({
+										message: "User created successfully.",
+										data: user
+									});
+								})
+								.catch(async (err) => {
+									if (transaction) await transaction.rollback();
+									emails.errorEmail(req, err);
+									res.status(500).send({
+										message: err.message || "Some error occurred while creating the Quiz."
+									});
 								});
-							})
-							.catch(async (err) => {
-								if (transaction) await transaction.rollback();
-								emails.errorEmail(req, err);
-								res.status(500).send({
-									message: err.message || "Some error occurred while creating the Quiz."
-								});
+						})
+						.catch(async (err) => {
+							if (transaction) await transaction.rollback();
+							emails.errorEmail(req, err);
+							res.status(500).send({
+								message: err.message || "Some error occurred while creating the Quiz."
 							});
-					})
-					.catch(async (err) => {
-						if (transaction) await transaction.rollback();
-						emails.errorEmail(req, err);
-						res.status(500).send({
-							message: err.message || "Some error occurred while creating the Quiz."
 						});
+				} else {
+					res.status(401).send({
+						title: "Password doesn't match!",
+						mesage: "Password doesn't match."
 					});
+				}
 			}
 		}
 	} catch (err) {
@@ -870,3 +881,110 @@ function convertDurationToWeeks(duration) {
 
 	return 0;
 }
+
+// 🧠 Helper: get correct week (Mon → Sun) range
+function getWeekRange(date, timeZone) {
+	const mDate = moment.tz(date, timeZone);
+
+	// Move to Monday start (moment uses Sunday as 0)
+	const dayOfWeek = mDate.day(); // 0 = Sunday, 1 = Monday, etc.
+	const startOfWeek = mDate.clone().subtract(dayOfWeek === 0 ? 6 : dayOfWeek - 1, "days");
+	const endOfWeek = startOfWeek.clone().add(6, "days");
+
+	return {
+		startOfWeek: startOfWeek.startOf("day").format("YYYY-MM-DD HH:mm:ss"),
+		endOfWeek: endOfWeek.endOf("day").format("YYYY-MM-DD HH:mm:ss")
+	};
+}
+
+// 🧠 Helper: get current month range
+function getMonthRange(date, timeZone) {
+	const mDate = moment.tz(date, timeZone);
+	return {
+		startOfMonth: mDate.clone().startOf("month").format("YYYY-MM-DD HH:mm:ss"),
+		endOfMonth: mDate.clone().endOf("month").format("YYYY-MM-DD HH:mm:ss")
+	};
+}
+
+// 📊 MAIN API: Weekly / Monthly Habit Progress
+exports.getHabitProgress = async (req, res) => {
+	try {
+		const { type, date, timeZone = "UTC" } = req.body;
+		if (!["week", "month"].includes(type)) {
+			return res.status(400).json({ message: "Invalid type. Must be 'week' or 'month'." });
+		}
+		if (!date) {
+			return res.status(400).json({ message: "Date is required." });
+		}
+
+		// Get the correct range based on type
+		let range;
+		if (type === "week") {
+			range = getWeekRange(date, timeZone);
+		} else {
+			range = getMonthRange(date, timeZone);
+		}
+
+		console.log(`📆 Type: ${type}`);
+		console.log(`🕒 Range: ${range.startOfWeek || range.startOfMonth} → ${range.endOfWeek || range.endOfMonth}`);
+
+		const startDate = range.startOfWeek || range.startOfMonth;
+		const endDate = range.endOfWeek || range.endOfMonth;
+
+		// Fetch all active habits with mandatory and percentage
+		const habits = await Habits.findAll({
+			where: {
+				userId: crypto.decrypt(req.userId),
+				mandatory: true,
+				isActive: "Y"
+			},
+			attributes: ["id", "name", "percentage"]
+		});
+
+		// Fetch all completions in date range
+		const completions = await HabitsCompletions.findAll({
+			where: {
+				isActive: "Y",
+				createdAt: {
+					[Op.between]: [startDate, endDate]
+				}
+			},
+			attributes: ["habitId", "createdAt"]
+		});
+
+		// Prepare response data
+		let graphData = [];
+
+		// Generate x-axis days (7 for week, up to 30/31 for month)
+		const startMoment = moment.tz(startDate, timeZone);
+		const endMoment = moment.tz(endDate, timeZone);
+
+		for (let m = startMoment.clone(); m.isSameOrBefore(endMoment, "day"); m.add(1, "day")) {
+			const day = m.format("YYYY-MM-DD");
+			let totalPercentage = 0;
+
+			for (let habit of habits) {
+				const completed = completions.find(
+					(c) => c.habitId === habit.id && moment.tz(c.createdAt, timeZone).format("YYYY-MM-DD") === day
+				);
+
+				// Add habit percentage if completed that day
+				if (completed) totalPercentage += parseFloat(habit.percentage || 0);
+			}
+
+			graphData.push({
+				date: day,
+				totalPercentage
+			});
+		}
+
+		return res.status(200).json({
+			message: `${type}ly habit progress`,
+			range: { startDate, endDate },
+			graphData
+		});
+	} catch (err) {
+		console.error("Error in getHabitProgress:", err);
+		res.status(500).json({ message: "Internal server error" });
+	}
+};

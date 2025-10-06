@@ -212,10 +212,11 @@ exports.listPosts = async (req, res) => {
 							required: false,
 							where: { isActive: "Y" }
 						}
-					]
+					],
+					order: [["createdAt", "DESC"]]
 				}
-			],
-			order: [["createdAt", "DESC"]]
+			]
+			// order: [["createdAt", "DESC"]]
 		});
 
 		encryptHelper(posts);
