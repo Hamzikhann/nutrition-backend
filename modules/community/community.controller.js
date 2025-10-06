@@ -157,13 +157,19 @@ exports.listCategories = async (req, res) => {
 			});
 		}
 
-		let whereCondition = { isActive: "Y" };
+		// Create exact start and end of user's local day, then convert to UTC
+		const startOfDayUTC = moment.tz(`${date} 00:00:00`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
+		const endOfDayUTC = moment.tz(`${date} 23:59:59.999`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
 
-		// Convert local day to UTC range
-		const startOfDayUTC = moment.tz(date, timeZone).startOf("day").utc().toDate();
-		const endOfDayUTC = moment.tz(date, timeZone).endOf("day").utc().toDate();
+		console.log(`🕒 Local day (${timeZone}): ${date}`);
+		console.log(`➡️ UTC range: ${startOfDayUTC} → ${endOfDayUTC}`);
 
-		whereCondition.createdAt = { [Op.between]: [startOfDayUTC, endOfDayUTC] };
+		const whereCondition = {
+			isActive: "Y",
+			createdAt: {
+				[Op.between]: [startOfDayUTC, endOfDayUTC]
+			}
+		};
 
 		const posts = await CommunityCategories.findAll({
 			include: [
@@ -197,6 +203,7 @@ exports.listCategories = async (req, res) => {
 
 		res.status(200).json({
 			message: `Posts for ${date} (${timeZone})`,
+			rangeUTC: { start: startOfDayUTC, end: endOfDayUTC },
 			posts
 		});
 	} catch (err) {
