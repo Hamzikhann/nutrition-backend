@@ -189,7 +189,7 @@ exports.listPosts = async (req, res) => {
 				[Op.between]: [startOfDayUTC, endOfDayUTC]
 			};
 		}
-
+		console.log(whereCondition);
 		const posts = await CommunityCategories.findAll({
 			include: [
 				{
