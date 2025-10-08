@@ -1,16 +1,12 @@
 const db = require("../../models");
 const encryptHelper = require("../../utils/encryptHelper");
 const Joi = require("joi");
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { sequelize } = require("../../models");
 const crypto = require("../../utils/crypto");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Dishes = db.dishes;
-const Ingredients = db.ingredients;
-const Nutrition = db.nutrition;
-const Directions = db.directions;
-const AssignedIngredients = db.assignedIngredients;
+
 const DishesCategories = db.dishesCategories;
 const Categories = db.categories;
 
@@ -20,7 +16,6 @@ exports.create = async (req, res) => {
 	try {
 		const schema = Joi.object({
 			title: Joi.string().required(),
-			// description: Joi.string().required(),
 			ingredients: Joi.string().required(), // stringified JSON
 			nutritions: Joi.string().required(),
 			directions: Joi.string().required(),
@@ -29,7 +24,6 @@ exports.create = async (req, res) => {
 			note: Joi.string().optional()
 		});
 
-		console.log(req.body);
 		const { error } = schema.validate(req.body);
 		if (error) {
 			return res.status(400).send({ message: error.details[0].message });
@@ -38,17 +32,9 @@ exports.create = async (req, res) => {
 		if (!req.file) {
 			return res.status(400).json({ error: "No file uploaded" });
 		}
-		console.log(req.file);
 
 		// Parse JSON fields
 		let { title, ingredients, nutritions, directions, subCategoryId, note } = req.body;
-		// ingredients = JSON.parse(ingredients);
-		// nutrition = JSON.parse(nutrition);
-		// directions = JSON.parse(directions);
-
-		console.log(typeof ingredients);
-		console.log(typeof nutritions);
-		console.log(typeof directions);
 
 		// Upload to S3
 		const s3Key = await uploadFileToSpaces(req.file, `ingredients`);
@@ -78,7 +64,6 @@ exports.create = async (req, res) => {
 			data: dish
 		});
 	} catch (err) {
-		console.log(err);
 		await t.rollback(); // rollback transaction on error
 		res.status(500).send({
 			message: err.message || "Some error occurred while creating the dish."
@@ -120,7 +105,6 @@ exports.list = async (req, res) => {
 			data: dishes
 		});
 	} catch (err) {
-		console.log(err);
 		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while retrieving dishes."
@@ -134,7 +118,6 @@ exports.createCategory = async (req, res) => {
 			title: Joi.string().required(),
 			categoryId: Joi.string().required()
 		});
-		console.log("req.body", req.body);
 		const { error } = schema.validate(req.body);
 		if (error) {
 			return res.status(400).send({ message: error.details[0].message });
@@ -164,9 +147,8 @@ exports.createCategory = async (req, res) => {
 			data: category
 		});
 	} catch (err) {
-		console.log(err);
 		// emails.errorEmail(req, err);
-		res.status(500).send({
+		return res.status(500).send({
 			message: err.message || "Some error occurred while creating the dish category."
 		});
 	}
@@ -178,7 +160,6 @@ exports.createMainCategory = async (req, res) => {
 			name: Joi.string().required(),
 			subCategoryName: Joi.string().optional()
 		});
-		console.log("req.body", req.body);
 		const { error } = schema.validate(req.body);
 		if (error) {
 			return res.status(400).send({ message: error.details[0].message });
@@ -237,8 +218,10 @@ exports.listCategory = async (req, res) => {
 		let list = await Categories.findAll({
 			include: [{ model: DishesCategories }]
 		});
+
 		encryptHelper(listCategory);
 		encryptHelper(list);
+
 		return res.status(200).send({
 			message: "Dishes Category List Fetched",
 			data: listCategory,
@@ -283,7 +266,6 @@ exports.update = async (req, res) => {
 				dishesCategoryId: crypto.decrypt(value.subCategoryId),
 				note: value.note
 			};
-			console.log(updateObj);
 			if (req.file) {
 				const s3Key = await uploadFileToSpaces(req.file, `dishes`);
 				value.image = s3Key;

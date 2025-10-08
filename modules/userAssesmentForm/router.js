@@ -11,18 +11,12 @@ router.post("/create", upload.array("media"), (req, res) => {
 	userAssesmentFormController.create(req, res);
 });
 
-// router.post("/list", userAssesmentFormController.list);
-
 router.post("/update", (req, res) => {
 	userAssesmentFormController.update(req, res);
 });
 
 router.post("/update/files", upload.array("media"), (req, res) => {
 	userAssesmentFormController.updateFiles(req, res);
-});
-
-router.post("/assigned-meals", (req, res) => {
-	userAssesmentFormController.getAssignedMeals(req, res);
 });
 
 module.exports = router;

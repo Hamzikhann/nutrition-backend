@@ -27,7 +27,6 @@ module.exports = (sequelize, DataTypes) => {
 
 	// Remove associations as meals are standalone entities now
 	table.associate = (models) => {
-		table.hasMany(models.assignedMeals);
 		table.hasMany(models.mealPlaner);
 		table.belongsTo(models.mealTypes);
 		table.belongsTo(models.dishesCategories);

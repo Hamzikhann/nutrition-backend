@@ -2,17 +2,11 @@ const db = require("../../models");
 const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const sequelize = db.sequelize;
-const { Op, literal } = db.Sequelize;
 const UserAssesmentForm = db.userAssesmentForm;
 const UserAssesmentFormFiles = db.userAssesmentFormFiles;
-const AssignedMeals = db.assignedMeals;
-const Meals = db.meals;
-const MealsType = db.mealTypes;
-const Categories = db.categories;
 
 const calculateKcalPlan = (weight, height, age) => {
 	const bmr = 655.1 + 9.6 * parseFloat(weight) + 1.58 * parseFloat(height) - 4.7 * parseFloat(age);
@@ -115,7 +109,6 @@ exports.create = async (req, res) => {
 		}
 		// Handle assessment files (media)
 		if (req.files) {
-			console.log("filesssss", req.files["media"]);
 			for (let file of req.files) {
 				const s3Key = await uploadFileToSpaces(file, `userAssesmentForm/${userId}/assessment`);
 
@@ -131,37 +124,8 @@ exports.create = async (req, res) => {
 				);
 			}
 		}
-		console.log(req.body.weight, req.body.height, req.body.age);
 		// Calculate kcal plan and assign meals
 		const { bmr, adjustedBmr, kcalPlan } = calculateKcalPlan(req.body.weight, req.body.height, req.body.age);
-		console.log(kcalPlan);
-		console.log(adjustedBmr);
-		console.log(bmr);
-		// Find meal plans that match the calculated kcal
-		// const matchingMeals = await Meals.findAll({
-		// 	where: {
-		// 		isActive: "Y",
-		// 		[Op.and]: [literal(`CONCAT(',', kcalOptions, ',') LIKE '%,${kcalPlan},%'`)]
-		// 	},
-		// 	attributes: {
-		// 		exclude: ["isActive", "createdAt", "updatedAt"]
-		// 	}
-		// }); // Assign meals to user in assignedMeals table
-		// for (const meal of matchingMeals) {
-		// 	await AssignedMeals.create(
-		// 		{
-		// 			userId,
-		// 			mealId: meal.id,
-		// 			assessmentId: userAssessmentFormData.id,
-		// 			mealTypeId: meal.mealTypeId,
-		// 			calculatedKcal: kcalPlan,
-		// 			userAssesmentFormId: userAssessmentFormData.id
-		// 		},
-		// 		{ transaction: t }
-		// 	);
-		// }
-
-		// Commit before fetching complete data
 		await t.commit();
 		const parts = req.body.name.trim().split(" ");
 		const firstName = parts[0];
@@ -184,24 +148,6 @@ exports.create = async (req, res) => {
 					model: UserAssesmentFormFiles,
 					required: false
 				}
-				// {
-				// 	model: AssignedMeals,
-				// 	include: [
-				// 		{
-				// 			model: Meals,
-				// 			include: [
-				// 				{
-				// 					model: MealsType,
-				// 					attributes: ["title"]
-				// 				},
-				// 				{
-				// 					model: Categories,
-				// 					attributes: ["title"]
-				// 				}
-				// 			]
-				// 		}
-				// 	]
-				// }
 			]
 		});
 
@@ -293,75 +239,6 @@ exports.updateFiles = async (req, res) => {
 	} catch (err) {
 		if (!t.finished) await t.rollback();
 		console.error("Error updating User Assessment Form Files:", err);
-		return res.status(500).send({ message: err.message || "Internal Server Error" });
-	}
-};
-
-exports.getAssignedMeals = async (req, res) => {
-	try {
-		const schema = joi.object({
-			userId: joi.string().required()
-		});
-
-		const { error } = schema.validate(req.body);
-		if (error) {
-			return res.status(400).send({ message: error.details[0].message });
-		}
-
-		const userId = crypto.decrypt(req.body.userId);
-
-		const assignedMeals = await AssignedMeals.findAll({
-			where: {
-				userId,
-				isActive: "Y"
-			},
-			include: [
-				{
-					model: Meals,
-					include: [
-						{
-							model: MealsType,
-							attributes: ["title"]
-						},
-						{
-							model: Categories,
-							attributes: ["title"]
-						}
-					],
-					attributes: {
-						exclude: ["isActive", "createdAt", "updatedAt"]
-					}
-				},
-				{
-					model: UserAssesmentForm,
-					attributes: ["name", "email", "weight", "height", "age"]
-				}
-			],
-			attributes: {
-				exclude: ["isActive", "createdAt", "updatedAt"]
-			}
-		});
-
-		// Group meals by meal type
-		const groupedMeals = {};
-		assignedMeals.forEach((assignment) => {
-			const mealType = assignment.meal.mealType.title;
-			if (!groupedMeals[mealType]) {
-				groupedMeals[mealType] = [];
-			}
-			groupedMeals[mealType].push(assignment);
-		});
-
-		encryptHelper(assignedMeals);
-		return res.status(200).send({
-			message: "Assigned meals retrieved successfully",
-			data: {
-				groupedByMealType: groupedMeals,
-				allMeals: assignedMeals
-			}
-		});
-	} catch (err) {
-		console.error("Error retrieving assigned meals:", err);
 		return res.status(500).send({ message: err.message || "Internal Server Error" });
 	}
 };

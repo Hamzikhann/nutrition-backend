@@ -16,18 +16,18 @@ exports.create = async (req, res) => {
 	try {
 		const schema = Joi.object({
 			title: Joi.string().required(),
-			description: Joi.string().optional(),
+			description: Joi.string().optional().allow("").allow(null),
 			kcalOptions: Joi.string().required(),
 			category: Joi.string().required(),
 			subCategory: Joi.string().required(),
-			ingredientsDetails: Joi.string().optional(),
-			cookingSteps: Joi.string().optional(),
-			nutritionCalories: Joi.string().optional(),
-			nutritionProtein: Joi.string().optional(),
-			nutritionCarbs: Joi.string().optional(),
-			nutritionFat: Joi.string().optional(),
-			mealType: Joi.string().optional(),
-			note: Joi.string().optional()
+			ingredientsDetails: Joi.string().optional().allow("").allow(null),
+			cookingSteps: Joi.string().optional().allow("").allow(null),
+			nutritionCalories: Joi.string().optional().allow("").allow(null),
+			nutritionProtein: Joi.string().optional().allow("").allow(null),
+			nutritionCarbs: Joi.string().optional().allow("").allow(null),
+			nutritionFat: Joi.string().optional().allow("").allow(null),
+			mealType: Joi.string().optional().allow("").allow(null),
+			note: Joi.string().optional().allow("").allow(null)
 		});
 
 		const { error } = schema.validate(req.body);

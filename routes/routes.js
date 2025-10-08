@@ -24,6 +24,7 @@ const paymentTypesRouteHandler = require("../modules/paymentTypes/router");
 const paymentTypesCategoriesRouteHandler = require("../modules/paymentTypes/paymentTypesCategories.router");
 const bannerRouteHandler = require("../modules/banner/router");
 const howToUseRouteHandler = require("../modules/howToUse/router");
+
 class Routes {
 	constructor(app) {
 		this.app = app;

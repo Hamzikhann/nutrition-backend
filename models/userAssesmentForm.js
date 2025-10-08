@@ -38,7 +38,6 @@ module.exports = (sequelize, DataTypes) => {
 	table.associate = (models) => {
 		table.hasMany(models.userAssesmentFormFiles);
 		table.belongsTo(models.users);
-		table.hasMany(models.assignedMeals);
 	};
 	return table;
 };
