@@ -6,7 +6,7 @@ const dashboardController = require("./dashboard.controller");
 
 // Get main dashboard statistics
 router.post("/stats", (req, res) => {
-	if (req.role === "Administrator") {
+	if (req.role === "Administrator" || req.role === "Subadmin") {
 		dashboardController.getDashboardStats(req, res);
 	} else {
 		res.status(403).json({ message: "Forbidden Access" });
@@ -15,7 +15,7 @@ router.post("/stats", (req, res) => {
 
 // Get monthly user growth data
 router.post("/user-growth", (req, res) => {
-	if (req.role === "Administrator") {
+	if (req.role === "Administrator" || req.role === "Subadmin") {
 		dashboardController.getMonthlyUserGrowth(req, res);
 	} else {
 		res.status(403).json({ message: "Forbidden Access" });
@@ -24,7 +24,7 @@ router.post("/user-growth", (req, res) => {
 
 // Get user activity statistics
 router.post("/user-activity", (req, res) => {
-	if (req.role === "Administrator") {
+	if (req.role === "Administrator" || req.role === "Subadmin") {
 		dashboardController.getUserActivityStats(req, res);
 	} else {
 		res.status(403).json({ message: "Forbidden Access" });
