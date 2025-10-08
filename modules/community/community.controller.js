@@ -211,6 +211,12 @@ exports.listPosts = async (req, res) => {
 							model: CommunityPostMedia,
 							required: false,
 							where: { isActive: "Y" }
+						},
+						{
+							model: User,
+							attributes: ["id", "firstName", "lastName"],
+
+							include: [{ model: db.roles, attributes: ["title"] }]
 						}
 					],
 					order: [["createdAt", "DESC"]]
