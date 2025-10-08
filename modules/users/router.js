@@ -7,7 +7,7 @@ const { upload } = fileUpload("users");
 const usersController = require("./user.controller");
 
 router.post("/list", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role === "Subadmin") {
 		usersController.listUsers(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
@@ -15,7 +15,7 @@ router.post("/list", (req, res) => {
 });
 
 router.post("/list/employees", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role === "Subadmin") {
 		usersController.listEmployees(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
@@ -23,7 +23,7 @@ router.post("/list/employees", (req, res) => {
 });
 
 router.post("/create", upload.single("image"), (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role === "Subadmin") {
 		usersController.create(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
@@ -60,7 +60,7 @@ router.post("/delete", (req, res) => {
 // });
 
 router.post("/update/status", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role === "Subadmin") {
 		usersController.updateStatus(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
@@ -68,7 +68,7 @@ router.post("/update/status", (req, res) => {
 });
 
 router.post("/create/employee", (req, res) => {
-	if (req.role == "Administrator") {
+	if (req.role == "Administrator" || req.role === "Subadmin") {
 		usersController.createEmployee(req, res);
 	} else {
 		res.status(403).send({ message: "Forbidden Access" });
