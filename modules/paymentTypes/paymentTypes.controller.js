@@ -65,7 +65,7 @@ exports.create = async (req, res) => {
 
 exports.list = async (req, res) => {
 	try {
-		if (req.role == "Administrator" || req.role == "Subadmin") {
+		if (req?.role == "Administrator" || req?.role == "Subadmin") {
 			const paymentTypes = await PaymentTypes.findAll({
 				where: {
 					isActive: "Y"
