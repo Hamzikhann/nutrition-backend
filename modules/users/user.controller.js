@@ -988,3 +988,87 @@ exports.getHabitProgress = async (req, res) => {
 		res.status(500).json({ message: "Internal server error" });
 	}
 };
+
+exports.updateEmployee = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			id: Joi.string().required(), // encrypted ID
+			name: Joi.string().required(),
+			phone: Joi.string().required(),
+			role: Joi.string().required(),
+			email: Joi.string().email().required(),
+			modules: Joi.array().required()
+		});
+
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			const message = error.details[0].message.replace(/"/g, "");
+			return res.status(400).send({ message });
+		}
+
+		const userId = crypto.decrypt(req.body.id);
+		let user = await Users.findOne({ where: { id: userId, isActive: "Y" } });
+		if (!user) {
+			return res.status(404).send({ message: "User not found or inactive." });
+		}
+
+		// Check for duplicate email (exclude same user)
+		const existingUser = await Users.findOne({
+			where: {
+				email: req.body.email.trim(),
+				isActive: "Y",
+				id: { [Op.ne]: userId }
+			}
+		});
+		if (existingUser) {
+			return res.status(400).send({
+				title: "Email already exists!",
+				message: "Another user with this email already exists."
+			});
+		}
+
+		// Password validation (only if provided)
+
+		const parts = req.body.name.trim().split(" ");
+		const firstName = parts[0];
+		const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+
+		const updatedUserObj = {
+			firstName: firstName.trim(),
+			lastName: lastName.trim(),
+			phoneNo: req.body.phone,
+			email: req.body.email,
+			roleId: crypto.decrypt(req.body.role),
+			modules: JSON.stringify(req.body.modules)
+		};
+
+		let transaction = await sequelize.transaction();
+		try {
+			await Users.update(updatedUserObj, { where: { id: userId }, transaction });
+
+			const updatedUser = await Users.findOne({
+				where: { id: userId },
+				include: [{ model: UserProfile }]
+			});
+
+			encryptHelper(updatedUser);
+			await transaction.commit();
+
+			return res.status(200).send({
+				message: "User updated successfully.",
+				data: updatedUser
+			});
+		} catch (err) {
+			if (transaction) await transaction.rollback();
+			emails.errorEmail(req, err);
+			return res.status(500).send({
+				message: err.message || "Some error occurred while updating the user."
+			});
+		}
+	} catch (err) {
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred."
+		});
+	}
+};

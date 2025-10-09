@@ -74,6 +74,15 @@ router.post("/create/employee", (req, res) => {
 		res.status(403).send({ message: "Forbidden Access" });
 	}
 });
+
+router.post("/update/employee", (req, res) => {
+	if (req.role == "Administrator" || req.role === "Subadmin") {
+		usersController.updateEmployee(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
+});
+
 router.post("/progress", (req, res) => {
 	usersController.getUserProgress(req, res);
 });
