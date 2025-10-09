@@ -352,13 +352,14 @@ exports.createWeek = async (req, res) => {
 		// Count already existing weeks
 		const existingWeeks = await Week.count();
 
-		// Calculate new target total weeks
-		const targetWeeks = existingWeeks + numberOfWeeks;
-		console.log(existingWeeks);
-		console.log(targetWeeks);
+		// ✅ Determine starting and ending week numbers
+		// If no existing weeks, start from 0
+		const startWeek = existingWeeks === 0 ? 0 : existingWeeks;
+		const targetWeeks = startWeek + numberOfWeeks;
 
 		let createdWeeks = [];
-		for (let i = existingWeeks + 1; i <= targetWeeks; i++) {
+
+		for (let i = startWeek; i < targetWeeks; i++) {
 			const week = await Week.create({
 				title: `Week ${i}`,
 				order: i
@@ -382,6 +383,7 @@ exports.createWeek = async (req, res) => {
 			data: createdWeeks
 		});
 	} catch (err) {
+		console.error("Error creating weeks:", err);
 		return res.status(400).send({
 			message: err.message || "Some error occurred while creating weeks."
 		});
