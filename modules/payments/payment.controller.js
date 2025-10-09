@@ -35,13 +35,13 @@ exports.create = async (req, res) => {
 
 		const { amount, paymentMethod, currency, paymentIntentId } = req.body;
 		console.log(req.body);
-		if (!req.file) {
-			await t.rollback();
-			return res.status(400).send({
-				success: false,
-				message: "Image is required"
-			});
-		}
+		// if (!req.file) {
+		// 	await t.rollback();
+		// 	return res.status(400).send({
+		// 		success: false,
+		// 		message: "Image is required"
+		// 	});
+		// }
 
 		let userId = crypto.decrypt(req.body.userId); //req.userId
 		console.log(userId);
@@ -75,9 +75,10 @@ exports.create = async (req, res) => {
 				message: "Plan not found"
 			});
 		}
-
-		const file = req.file;
-		const fileUrl = await uploadFileToSpaces(file, "payments");
+		if (req.file) {
+			const file = req.file;
+			var fileUrl = await uploadFileToSpaces(file, "payments");
+		}
 
 		const updateUser = await User.update(
 			{
@@ -97,7 +98,7 @@ exports.create = async (req, res) => {
 				paymentMethod,
 				currency,
 				paymentIntentId,
-				image: fileUrl,
+				image: fileUrl ? fileUrl : null,
 				userId
 			},
 			{

@@ -27,10 +27,13 @@ exports.create = async (req, res) => {
 			name: joi.string().required(),
 			details: joi.string().required(),
 			duration: joi.string().required(),
-			price: joi.string().required(),
+			price: joi.number().required(),
 			features: joi.array().required(),
-			isPopular: joi.string().optional(),
-			isFree: joi.string().optional()
+			isPopular: joi.string().optional().allow("", null),
+			isFree: joi.string().optional().allow("", null),
+			actualPrice: joi.string().optional().allow("", null),
+			discount: joi.string().optional().allow("", null),
+			discountPrice: joi.string().optional().allow("", null)
 		});
 		const { error, value } = joiSchema.validate(req.body);
 		if (error) {
@@ -45,7 +48,10 @@ exports.create = async (req, res) => {
 				features: JSON.stringify(req.body.features),
 				isPopular: req.body.isPopular,
 				isFree: req.body.isFree,
-				price: req.body.price
+				price: req.body.price,
+				actualPrice: req.body.actualPrice,
+				discount: req.body.discount,
+				discountPrice: req.body.discountPrice
 			};
 
 			let createPlan = await Plans.create(planObj);
@@ -71,8 +77,11 @@ exports.update = async (req, res) => {
 			duration: joi.string().required(),
 			features: joi.array().required(),
 			isPopular: joi.string().optional(),
-			isFree: joi.string().optional(),
-			price: joi.string().required()
+			isFree: joi.string().optional().allow("", null),
+			price: joi.number().required().allow("", null),
+			actualPrice: joi.string().optional().allow("", null),
+			discount: joi.string().optional().allow("", null),
+			discountPrice: joi.string().optional().allow("", null)
 		});
 		const { error, value } = joiSchema.validate(req.body);
 		if (error) {
@@ -87,7 +96,10 @@ exports.update = async (req, res) => {
 				features: JSON.stringify(req.body.features),
 				isPopular: req.body.isPopular,
 				isFree: req.body.isFree,
-				price: req.body.price
+				price: req.body.price,
+				actualPrice: req.body.actualPrice,
+				discount: req.body.discount,
+				discountPrice: req.body.discountPrice
 			};
 
 			let updatePlan = await Plans.update(planObj, {

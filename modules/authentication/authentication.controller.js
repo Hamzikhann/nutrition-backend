@@ -19,6 +19,8 @@ const Users = db.users;
 const UserProfile = db.userProfile;
 const Roles = db.roles;
 const Otp = db.otp;
+const UserPlans = db.userPlans;
+const Plans = db.plans;
 
 exports.login = async (req, res) => {
 	try {
@@ -48,6 +50,14 @@ exports.login = async (req, res) => {
 				{
 					model: Roles,
 					attributes: ["title"]
+				},
+				{
+					model: UserPlans,
+					include: [
+						{
+							model: Plans
+						}
+					]
 				}
 			],
 			attributes: [

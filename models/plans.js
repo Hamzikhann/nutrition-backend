@@ -11,6 +11,9 @@ module.exports = (sequelize, DataTypes) => {
 			isFree: { type: DataTypes.STRING, defaultValue: "N", allowNull: false },
 			isPopular: DataTypes.STRING,
 			features: DataTypes.TEXT,
+			actualPrice: DataTypes.STRING,
+			discount: DataTypes.STRING,
+			discountPrice: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,
