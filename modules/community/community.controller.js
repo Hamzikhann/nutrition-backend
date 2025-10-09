@@ -28,7 +28,8 @@ exports.createCategory = async (req, res) => {
 		} else {
 			const exist = await CommunityCategories.findOne({
 				where: {
-					title: value.title
+					title: value.title,
+					isActive: "Y"
 				}
 			});
 			if (exist) {
