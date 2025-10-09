@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const paymentTypesController = require("./paymentTypes.controller");
 const jwt = require("../../utils/jwt");
+
 router.post("/create", jwt.protect, async (req, res) => {
 	if (req.role == "Administrator" || req.role == "Subadmin") {
 		await paymentTypesController.create(req, res);
@@ -13,6 +14,10 @@ router.post("/create", jwt.protect, async (req, res) => {
 
 router.post("/list", async (req, res) => {
 	await paymentTypesController.list(req, res);
+});
+
+router.post("/v2/list", jwt.protect, async (req, res) => {
+	await paymentTypesController.listv2(req, res);
 });
 
 router.post("/detail", async (req, res) => {

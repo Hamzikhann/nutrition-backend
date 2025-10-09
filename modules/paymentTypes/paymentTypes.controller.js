@@ -111,6 +111,54 @@ exports.list = async (req, res) => {
 	}
 };
 
+exports.listv2 = async (req, res) => {
+	try {
+		if (req?.role == "Administrator" || req?.role == "Subadmin") {
+			const paymentTypes = await PaymentTypes.findAll({
+				where: {
+					isActive: "Y"
+				},
+				include: [
+					{
+						model: PaymentTypesCategories
+					}
+				]
+			});
+			encryptHelper(paymentTypes);
+
+			return res.status(200).send({
+				message: "Payment types list",
+				data: paymentTypes
+			});
+		} else {
+			const paymentTypes = await PaymentTypesCategories.findAll({
+				where: {
+					isActive: "Y"
+				},
+				include: [
+					{
+						model: PaymentTypes,
+						where: {
+							isActive: "Y"
+						}
+					}
+				]
+			});
+			encryptHelper(paymentTypes);
+
+			return res.status(200).send({
+				message: "Payment types list",
+				data: paymentTypes
+			});
+		}
+	} catch (error) {
+		res.status(500).send({
+			message: "Internal server error",
+			error: error.message
+		});
+	}
+};
+
 exports.detail = async (req, res) => {
 	try {
 		const schema = Joi.object({
