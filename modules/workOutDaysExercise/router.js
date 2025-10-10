@@ -66,4 +66,14 @@ router.post("/create/week", (req, res) => {
 	}
 });
 
+router.post("/delete", (req, res) => {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		workoutDayExercisesController.delete(req, res);
+	} else {
+		return res.status(400).send({
+			message: "Only Administrator can create week"
+		});
+	}
+});
+
 module.exports = router;

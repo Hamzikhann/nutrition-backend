@@ -411,3 +411,30 @@ function convertDurationToWeeks(duration) {
 
 	return 0;
 }
+
+exports.delete = async (req, res) => {
+	try {
+		const schema = joi.object({
+			id: joi.string().required()
+		});
+		const { error } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({ message: error.details[0].message });
+		}
+
+		const id = crypto.decrypt(req.body.id);
+
+		const [update] = await WorkOutDayExercises.update({ isActive: "N" }, { where: { id } });
+
+		if (update) {
+			return res.status(200).send({ message: "Workout Deleted", success: true });
+		} else {
+			return res.status(404).send({ message: "Workout not found" });
+		}
+	} catch (error) {
+		console.error("Error deleting workout:", error);
+		return res.status(500).send({
+			message: error.message || "Some error occurred while deleting workout."
+		});
+	}
+};
