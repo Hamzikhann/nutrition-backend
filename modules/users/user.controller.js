@@ -934,13 +934,12 @@ exports.getHabitProgress = async (req, res) => {
 		// Fetch all active habits with mandatory and percentage
 		const habits = await Habits.findAll({
 			where: {
-				userId: crypto.decrypt(req.userId),
-				mandatory: true,
+				mandatory: "true",
 				isActive: "Y"
 			},
 			attributes: ["id", "name", "percentage"]
 		});
-
+console.log(habits)
 		// Fetch all completions in date range
 		const completions = await HabitsCompletions.findAll({
 			where: {
@@ -952,7 +951,7 @@ exports.getHabitProgress = async (req, res) => {
 			},
 			attributes: ["habitId", "createdAt"]
 		});
-
+console.log(completions)
 		// Prepare response data
 		let graphData = [];
 
