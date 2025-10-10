@@ -945,7 +945,7 @@ exports.getHabitProgress = async (req, res) => {
 		const completions = await HabitsCompletions.findAll({
 			where: {
 				isActive: "Y",
-				userId,
+				userId: crypto.decrypt(req.userId),
 				createdAt: {
 					[Op.between]: [startDate, endDate]
 				}
