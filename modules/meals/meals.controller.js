@@ -129,7 +129,7 @@ exports.list = async (req, res) => {
 		let meals;
 
 		// For non-administrator users, filter by BMR
-		if (role !== "Administrator" || role !== "Subadmin") {
+		if (role !== "Administrator" && role !== "Subadmin") {
 			// Get user's BMR value
 			const userId = crypto.decrypt(req.userId);
 			const user = await db.users.findOne({
