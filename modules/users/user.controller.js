@@ -939,7 +939,6 @@ exports.getHabitProgress = async (req, res) => {
 			},
 			attributes: ["id", "name", "percentage"]
 		});
-console.log(habits)
 		// Fetch all completions in date range
 		const completions = await HabitsCompletions.findAll({
 			where: {
@@ -951,7 +950,6 @@ console.log(habits)
 			},
 			attributes: ["habitId", "createdAt"]
 		});
-console.log(completions)
 		// Prepare response data
 		let graphData = [];
 

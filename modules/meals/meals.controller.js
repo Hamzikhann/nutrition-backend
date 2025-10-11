@@ -129,15 +129,13 @@ exports.list = async (req, res) => {
 		let meals;
 
 		// For non-administrator users, filter by BMR
-		if (role !== "Administrator") {
+		if (role !== "Administrator" || role !== "Subadmin") {
 			// Get user's BMR value
 			const userId = crypto.decrypt(req.userId);
 			const user = await db.users.findOne({
 				where: { id: userId, isActive: "Y" },
 				attributes: ["bmr"] // Assuming BMR is stored in users table
 			});
-			console.log(userId);
-			console.log(user);
 			if (!user || !user.bmr) {
 				return res.status(400).send({
 					message: "User BMR not found"
