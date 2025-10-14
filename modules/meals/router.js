@@ -15,8 +15,11 @@ router.post("/create", upload.single("image"), async (req, res) => {
 });
 
 router.post("/list", async (req, res) => {
-	// await mealsController.list(req, res);
-	await mealsController.listv2(req, res);
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		await mealsController.list(req, res);
+	} else {
+		await mealsController.listv2(req, res);
+	}
 });
 
 router.post("/update", upload.single("image"), async (req, res) => {
