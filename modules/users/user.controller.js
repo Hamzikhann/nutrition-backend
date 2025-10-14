@@ -106,6 +106,7 @@ exports.create = async (req, res) => {
 
 				let transaction = await sequelize.transaction();
 				Users.create(userObj, { transaction })
+
 					.then(async (user) => {
 						UserProfile.create({ userId: user.id }, { transaction })
 							.then(async (profile) => {
