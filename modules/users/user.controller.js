@@ -898,39 +898,21 @@ function getWeekRange(date, timeZone) {
 	};
 }
 
-// 🧠 Helper: get current month range
-function getMonthRange(date, timeZone) {
-	const mDate = moment.tz(date, timeZone);
-	return {
-		startOfMonth: mDate.clone().startOf("month").format("YYYY-MM-DD HH:mm:ss"),
-		endOfMonth: mDate.clone().endOf("month").format("YYYY-MM-DD HH:mm:ss")
-	};
-}
 
 // 📊 MAIN API: Weekly / Monthly Habit Progress
 exports.getHabitProgress = async (req, res) => {
 	try {
-		const { type, date, timeZone = "UTC" } = req.body;
-		if (!["week", "month"].includes(type)) {
-			return res.status(400).json({ message: "Invalid type. Must be 'week' or 'month'." });
-		}
-		if (!date) {
-			return res.status(400).json({ message: "Date is required." });
-		}
+		const { timeZone = "UTC" } = req.body;
 
-		// Get the correct range based on type
-		let range;
-		if (type === "week") {
-			range = getWeekRange(date, timeZone);
-		} else {
-			range = getMonthRange(date, timeZone);
+		// Get user to fetch createdAt date
+		const user = await Users.findByPk(crypto.decrypt(req.userId));
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
 		}
+		const startDate = moment.tz(user.createdAt, timeZone);
+		const endDate = moment.tz(new Date(), timeZone);
 
-		console.log(`📆 Type: ${type}`);
-		console.log(`🕒 Range: ${range.startOfWeek || range.startOfMonth} → ${range.endOfWeek || range.endOfMonth}`);
-
-		const startDate = range.startOfWeek || range.startOfMonth;
-		const endDate = range.endOfWeek || range.endOfMonth;
+		console.log(`📆 Range: ${startDate.format("YYYY-MM-DD HH:mm:ss")} → ${endDate.format("YYYY-MM-DD HH:mm:ss")}`);
 
 		// Fetch all active habits with mandatory and percentage
 		const habits = await Habits.findAll({
@@ -940,25 +922,24 @@ exports.getHabitProgress = async (req, res) => {
 			},
 			attributes: ["id", "name", "percentage"]
 		});
-		// Fetch all completions in date range
+
+		// Fetch all completions from startDate to endDate
 		const completions = await HabitsCompletions.findAll({
 			where: {
 				isActive: "Y",
 				userId: crypto.decrypt(req.userId),
 				createdAt: {
-					[Op.between]: [startDate, endDate]
+					[Op.between]: [startDate.format("YYYY-MM-DD HH:mm:ss"), endDate.format("YYYY-MM-DD HH:mm:ss")]
 				}
 			},
 			attributes: ["habitId", "createdAt"]
 		});
+
 		// Prepare response data
 		let graphData = [];
 
-		// Generate x-axis days (7 for week, up to 30/31 for month)
-		const startMoment = moment.tz(startDate, timeZone);
-		const endMoment = moment.tz(endDate, timeZone);
-
-		for (let m = startMoment.clone(); m.isSameOrBefore(endMoment, "day"); m.add(1, "day")) {
+		// Loop through each day from startDate to endDate
+		for (let m = startDate.clone(); m.isSameOrBefore(endDate, "day"); m.add(1, "day")) {
 			const day = m.format("YYYY-MM-DD");
 			let totalPercentage = 0;
 
@@ -978,8 +959,8 @@ exports.getHabitProgress = async (req, res) => {
 		}
 
 		return res.status(200).json({
-			message: `${type}ly habit progress`,
-			range: { startDate, endDate },
+			message: "Habit progress data retrieved successfully",
+			range: { startDate: startDate.format("YYYY-MM-DD"), endDate: endDate.format("YYYY-MM-DD") },
 			graphData
 		});
 	} catch (err) {

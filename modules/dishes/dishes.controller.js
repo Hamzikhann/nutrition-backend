@@ -77,6 +77,7 @@ exports.list = async (req, res) => {
 			include: [
 				{
 					model: DishesCategories,
+					where: { isActive: "Y" },
 
 					include: [
 						{
@@ -93,7 +94,7 @@ exports.list = async (req, res) => {
 					]
 				}
 			],
-
+where: { isActive: "Y" },
 			attributes: {
 				exclude: ["isActive", "createdAt", "updatedAt"]
 			}
@@ -127,7 +128,7 @@ exports.createCategory = async (req, res) => {
 		}
 
 		let exist = await DishesCategories.findOne({
-			where: { title: req.body.title, categoryId: crypto.decrypt(req.body.categoryId) }
+			where: { title: req.body.title, categoryId: crypto.decrypt(req.body.categoryId), isActive: "Y" }
 		});
 
 		if (exist) {
@@ -169,7 +170,7 @@ exports.createMainCategory = async (req, res) => {
 		}
 
 		let exist = await Categories.findOne({
-			where: { title: req.body.name }
+			where: { title: req.body.name , isActive: "Y" }
 		});
 
 		if (exist) {
@@ -208,15 +209,18 @@ exports.createMainCategory = async (req, res) => {
 exports.listCategory = async (req, res) => {
 	try {
 		let listCategory = await DishesCategories.findAll({
+			where: { isActive: "Y" },
 			include: [
 				{
-					model: Categories
+					model: Categories,
+					where: { isActive: "Y" },
 				}
 			]
 		});
 
 		let list = await Categories.findAll({
-			include: [{ model: DishesCategories }]
+			where: { isActive: "Y" },
+			include: [{ model: DishesCategories ,where: { isActive: "Y" }, required: false}]
 		});
 
 		encryptHelper(listCategory);

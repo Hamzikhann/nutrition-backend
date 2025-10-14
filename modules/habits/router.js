@@ -29,7 +29,7 @@ router.post("/update", upload.single("image"), async (req, res) => {
 	}
 });
 router.post("/delete", async (req, res) => {
-	if (req.role == "Administrator" || req.role == "Subadmin") {
+	if (req.role == "Administrator" || req.role == "Subadmin" || req.role == "User") {
 		await habitsController.delete(req, res);
 	} else {
 		return res.status(400).send({

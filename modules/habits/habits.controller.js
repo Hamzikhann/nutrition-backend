@@ -6,6 +6,7 @@ const crypto = require("../../utils/crypto");
 const Op = require("sequelize").Op;
 const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
+const moment = require('moment-timezone');
 // const deepClone = require("deep-clone");
 
 const Habits = db.habits;
@@ -319,31 +320,52 @@ exports.delete = async (req, res) => {
 			return res.status(400).send({
 				message: error.details[0].message
 			});
-		} else {
-			const { id } = value;
-			const habit = await Habits.update(
-				{
-					isActive: "N"
-				},
-				{
-					where: {
-						id: crypto.decrypt(id)
-					}
-				}
-			);
-			encryptHelper(habit);
-			return res.status(200).send({
-				message: "Habit deleted successfully",
-				data: habit
-			});
 		}
+
+		const { id } = value;
+		const habitId = crypto.decrypt(id);
+		let userId=crypto.decrypt(req.userId);
+
+		// find habit first
+		const habit = await Habits.findOne({ where: { id: habitId, isActive: "Y"} });
+		if (!habit) {
+			return res.status(404).send({ message: "Habit not found" });
+		}
+	
+		// Role-based check
+		if (req.role === "User") {
+			// Restrict users from deleting admin-created habits (userId = 1)
+			if (habit.userId === 1) {
+				return res.status(403).send({
+					message: "You are not allowed to delete admin-created habits"
+				});
+			}
+
+			// Also ensure user can delete only their own habits
+			if (habit.userId !== parseInt(userId)) {
+				return res.status(403).send({
+					message: "You can only delete your own habits"
+				});
+			}
+		}
+
+		// perform soft delete
+		await Habits.update(
+			{ isActive: "N" },
+			{ where: { id: habitId } }
+		);
+
+		return res.status(200).send({
+			message: "Habit deleted successfully"
+		});
 	} catch (err) {
 		emails.errorEmail(req, err);
 		res.status(500).send({
-			message: err.message || "Some error occurred while reassigning the booking."
+			message: err.message || "Some error occurred while deleting the habit."
 		});
 	}
 };
+
 
 exports.update = async (req, res) => {
 	try {
@@ -520,7 +542,7 @@ exports.getHabitProgressGraph = async (req, res) => {
 	try {
 		const schema = Joi.object({
 			userId: Joi.string().required(),
-			type: Joi.string().valid("monthly", "weekly").required()
+			timezone: Joi.string().optional()
 		});
 
 		const { error, value } = schema.validate(req.body);
@@ -529,13 +551,21 @@ exports.getHabitProgressGraph = async (req, res) => {
 		}
 
 		const userId = crypto.decrypt(req.body.userId);
-		const { type } = req.body;
+		const timezone = req.body.timezone || 'UTC'; // Default to UTC if not provided
+
+		// Get user to fetch createdAt date
+		const user = await User.findByPk(userId);
+		if (!user) {
+			return res.status(404).send({ message: "User not found" });
+		}
+		const startDate = new Date(user.createdAt);
+		const endDate = new Date();
 
 		// Get user's mandatory habits
 		const habits = await Habits.findAll({
 			where: {
 				isActive: "Y",
-				userId: [1, userId], // global + personal
+				userId: 1, // global + personal
 				mandatory: "Y"
 			}
 		});
@@ -550,104 +580,45 @@ exports.getHabitProgressGraph = async (req, res) => {
 			});
 		}
 
-		// Dates
-		const now = new Date();
-		const currentMonth = now.getMonth();
-		const currentYear = now.getFullYear();
-		const monthStart = new Date(currentYear, currentMonth, 1);
-		const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
-
-		const weekStart = new Date(now);
-		weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
-		weekStart.setHours(0, 0, 0, 0);
-		const weekEnd = new Date(weekStart);
-		weekEnd.setDate(weekStart.getDate() + 6); // Sunday
-		weekEnd.setHours(23, 59, 59, 999);
-
-		// Query completions once for month/week
-		let completions = [];
-		if (type === "monthly") {
-			completions = await HabitCompletions.findAll({
-				where: {
-					habitId: habitIds,
-					userId,
-					status: "Completed",
-					updatedAt: { [Op.between]: [monthStart, monthEnd] }
-				}
-			});
-		} else if (type === "weekly") {
-			completions = await HabitCompletions.findAll({
-				where: {
-					habitId: habitIds,
-					userId,
-					status: "Completed",
-					updatedAt: { [Op.between]: [weekStart, weekEnd] }
-				}
-			});
-		}
+		// Query all completions from startDate to endDate
+		const completions = await HabitCompletions.findAll({
+			where: {
+				habitId: habitIds,
+				userId,
+				status: "Completed",
+				updatedAt: { [Op.between]: [startDate, endDate] }
+			}
+		});
 
 		let responseData = [];
 
-		// --- Monthly ---
-		if (type === "monthly") {
-			const weeksInMonth = Math.ceil((monthEnd.getDate() - monthStart.getDate() + 1) / 7);
+		// Loop through each day from startDate to endDate
+		const currentDate = new Date(startDate);
+		while (currentDate <= endDate) {
+			const dayStart = new Date(currentDate);
+			dayStart.setHours(0, 0, 0, 0);
+			const dayEnd = new Date(currentDate);
+			dayEnd.setHours(23, 59, 59, 999);
 
-			for (let week = 0; week < weeksInMonth; week++) {
-				const weekStartDate = new Date(monthStart);
-				weekStartDate.setDate(monthStart.getDate() + week * 7);
-				const weekEndDate = new Date(weekStartDate);
-				weekEndDate.setDate(weekStartDate.getDate() + 6);
-				if (weekEndDate > monthEnd) weekEndDate.setTime(monthEnd.getTime());
+			const dayCompletionsCount = completions.filter((c) => {
+				const date = new Date(c.updatedAt);
+				return date >= dayStart && date <= dayEnd;
+			}).length;
 
-				const weekCompletionsCount = completions.filter((c) => {
-					const date = new Date(c.updatedAt);
-					return date >= weekStartDate && date <= weekEndDate;
-				}).length;
+			const percentage = totalHabits > 0 ? Math.round((dayCompletionsCount / totalHabits) * 100) : 0;
 
-				const totalPossible =
-					totalHabits * Math.min(7, Math.ceil((weekEndDate - weekStartDate) / (1000 * 60 * 60 * 24)) + 1);
-				const percentage = totalPossible > 0 ? Math.round((weekCompletionsCount / totalPossible) * 100) : 0;
+			responseData.push({
+				date: currentDate.toISOString().split("T")[0],
+				completed: dayCompletionsCount,
+				total: totalHabits,
+				percentage: Math.min(percentage, 100)
+			});
 
-				responseData.push({
-					week: week + 1,
-					completed: weekCompletionsCount,
-					total: totalPossible,
-					percentage: Math.min(percentage, 100),
-					startDate: weekStartDate.toISOString().split("T")[0],
-					endDate: weekEndDate.toISOString().split("T")[0]
-				});
-			}
-		}
-
-		// --- Weekly ---
-		if (type === "weekly") {
-			for (let day = 0; day < 7; day++) {
-				const dayDate = new Date(weekStart);
-				dayDate.setDate(weekStart.getDate() + day);
-				const dayStart = new Date(dayDate);
-				dayStart.setHours(0, 0, 0, 0);
-				const dayEnd = new Date(dayDate);
-				dayEnd.setHours(23, 59, 59, 999);
-
-				const dayCompletionsCount = completions.filter((c) => {
-					const date = new Date(c.updatedAt);
-					return date >= dayStart && date <= dayEnd;
-				}).length;
-
-				const percentage = totalHabits > 0 ? Math.round((dayCompletionsCount / totalHabits) * 100) : 0;
-
-				responseData.push({
-					day: dayDate.toLocaleDateString("en-US", { weekday: "short" }),
-					date: dayDate.toISOString().split("T")[0],
-					completed: dayCompletionsCount,
-					total: totalHabits,
-					percentage: Math.min(percentage, 100)
-				});
-			}
+			currentDate.setDate(currentDate.getDate() + 1);
 		}
 
 		return res.status(200).send({
-			message: `Habit progress ${type} data retrieved successfully`,
+			message: "Habit progress data retrieved successfully",
 			data: responseData
 		});
 	} catch (err) {

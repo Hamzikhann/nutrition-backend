@@ -117,10 +117,12 @@ exports.list = async (req, res) => {
 			},
 			{
 				model: db.categories,
+				where: { isActive: "Y" },
 				attributes: ["id", "title"]
 			},
 			{
 				model: db.dishesCategories,
+				where: { isActive: "Y" },
 				attributes: ["id", "title", "image"],
 				required: true
 			}
