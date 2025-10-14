@@ -378,8 +378,6 @@ exports.checkEmail = async (req, res) => {
 	}
 };
 
-const { Op } = require("sequelize");
-
 exports.verifyOtp = async (req, res) => {
 	try {
 		const joiSchema = Joi.object({
