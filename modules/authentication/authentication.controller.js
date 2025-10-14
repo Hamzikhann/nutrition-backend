@@ -10,6 +10,7 @@ const { sequelize } = require("../../models");
 require("dotenv").config();
 // const twilio = require("twilio");
 
+const { Op } = require("sequelize");
 // const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 const Redis = require("ioredis");
@@ -406,16 +407,11 @@ exports.verifyOtp = async (req, res) => {
 
 		// Check if user exists (with proper include syntax)
 		const user = await Users.findOne({
-			where: { email, phoneNo },
-			include: [
-				{
-					model: Roles, // Make sure this matches your model name exactly
-					required: false
-				}
-			]
+			where: {
+				[Op.or]: [{ email }, { phoneNo }]
+			},
+			include: [{ model: Roles }]
 		});
-
-		console.log(user);
 
 		// Handle different user states
 		if (user) {
