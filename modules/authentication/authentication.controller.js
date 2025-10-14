@@ -378,9 +378,10 @@ exports.checkEmail = async (req, res) => {
 	}
 };
 
+const { Op } = require("sequelize");
+
 exports.verifyOtp = async (req, res) => {
 	try {
-		// Input validation
 		const joiSchema = Joi.object({
 			email: Joi.string().allow("").allow(null),
 			phoneNo: Joi.string().allow("").allow(null),
@@ -396,66 +397,77 @@ exports.verifyOtp = async (req, res) => {
 
 		const { email, phoneNo, otp } = req.body;
 
-		// Verify OTP exists
 		const otpCheck = await Otp.findOne({ where: { otp } });
 		if (!otpCheck) {
 			return res.status(401).send({
-				title: "Incorrect Otp",
+				title: "Incorrect OTP",
 				message: "OTP does not exist in our system"
 			});
 		}
 
-		// Check if user exists (with proper include syntax)
-		const user = await Users.findOne({
-			where: {
-				[Op.or]: [{ email }, { phoneNo }]
-			},
-			include: [{ model: Roles }]
-		});
+		const userByEmail = email ? await Users.findOne({ where: { email }, include: [{ model: Roles }] }) : null;
+		const userByPhone = phoneNo ? await Users.findOne({ where: { phoneNo }, include: [{ model: Roles }] }) : null;
 
-		// Handle different user states
-		if (user) {
-			if (user.isActive == "N") {
-				encryptHelper(user);
+		// 🧩 Case 1: both exist but different users → mismatch
+		if (userByEmail && userByPhone && userByEmail.id !== userByPhone.id) {
+			return res.status(400).send({
+				title: "User Mismatch",
+				message: "Email and phone number belong to different accounts. Please verify your details."
+			});
+		}
 
-				return res.status(401).send({
-					title: "User Not Active",
-					message: "User not active, please contact admin",
-					data: user
-				});
-			} else if (user.isActive == "Y") {
-				encryptHelper(user);
+		// 🧩 Case 2: only one found — check mismatch logic
+		if (userByEmail && !userByPhone && phoneNo && userByEmail.phoneNo !== phoneNo) {
+			return res.status(400).send({
+				title: "Phone Mismatch",
+				message: "The phone number you entered does not match our records for this email."
+			});
+		}
 
-				return res.status(401).send({
-					title: "User Active",
-					message: "User active, otp verified",
-					data: user
-				});
-			}
-		} else {
-			// Create new user if doesn't exist
-			let createdUser = await Users.create({
+		if (userByPhone && !userByEmail && email && userByPhone.email !== email) {
+			return res.status(400).send({
+				title: "Email Mismatch",
+				message: "The email you entered does not match our records for this phone number."
+			});
+		}
+
+		// 🧩 Case 3: no user found — create one
+		if (!userByEmail && !userByPhone) {
+			const createdUser = await Users.create({
 				email,
 				phoneNo,
 				isActive: "N",
-				roleId: 2 // Default role for new users
+				roleId: 2
 			});
 
-			let getUser = await Users.findOne({
-				where: {
-					id: createdUser.id
-				},
-				include: [
-					{
-						model: Roles
-					}
-				]
+			const getUser = await Users.findOne({
+				where: { id: createdUser.id },
+				include: [{ model: Roles }]
 			});
 
 			encryptHelper(getUser);
 			return res.status(200).send({
 				message: "OTP verified successfully. Account pending activation.",
 				data: getUser
+			});
+		}
+
+		// 🧩 Case 4: use whichever user was found
+		const user = userByEmail || userByPhone;
+
+		if (user.isActive === "N") {
+			encryptHelper(user);
+			return res.status(401).send({
+				title: "User Not Active",
+				message: "User not active, please contact admin",
+				data: user
+			});
+		} else {
+			encryptHelper(user);
+			return res.status(200).send({
+				title: "User Active",
+				message: "User active, OTP verified successfully.",
+				data: user
 			});
 		}
 	} catch (err) {
