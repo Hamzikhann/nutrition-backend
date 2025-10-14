@@ -264,7 +264,7 @@ exports.listv2 = async (req, res) => {
 				}
 			],
 			order: [
-				["title", "ASC"],
+				["id", "ASC"],
 				[db.dishesCategories, "title", "ASC"],
 				[db.dishesCategories, db.meals, "title", "ASC"]
 			]
