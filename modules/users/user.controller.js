@@ -918,6 +918,7 @@ exports.getHabitProgress = async (req, res) => {
 		const habits = await Habits.findAll({
 			where: {
 				mandatory: "true",
+				userId:1,
 				isActive: "Y"
 			},
 			attributes: ["id", "name", "percentage"]

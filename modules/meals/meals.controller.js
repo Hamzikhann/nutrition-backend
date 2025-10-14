@@ -206,6 +206,107 @@ exports.list = async (req, res) => {
 		});
 	}
 };
+
+exports.listv2 = async (req, res) => {
+	try {
+		const role = req.role;
+		const isAdmin = role === "Administrator" || role === "Subadmin";
+		let userBMR = null;
+
+		// Get user BMR early for non-admin
+		if (!isAdmin) {
+			const userId = crypto.decrypt(req.userId);
+			const user = await db.users.findOne({
+				where: { id: userId, isActive: "Y" },
+				attributes: ["bmr"],
+				raw: true // Faster for single attribute
+			});
+
+			if (!user?.bmr) {
+				return res.status(400).json({ message: "User BMR not found" });
+			}
+			userBMR = parseInt(user.bmr);
+		}
+
+		// Single optimized query
+		const categories = await db.categories.findAll({
+			where: { isActive: "Y" },
+			attributes: ["id", "title"],
+			include: [
+				{
+					model: db.dishesCategories,
+					where: { isActive: "Y" },
+					attributes: ["id", "title", "image"],
+					required: false, // Changed to false to avoid filtering out categories
+					include: [
+						{
+							model: db.meals,
+							where: {
+								isActive: "Y",
+								...(!isAdmin &&
+									userBMR && {
+										[db.Sequelize.Op.or]: [
+											// Handle different kcalOptions formats
+											db.sequelize.literal(`kcalOptions LIKE '%${userBMR}%'`),
+											db.sequelize.literal(`JSON_CONTAINS(kcalOptions, '"${userBMR}"')`),
+											db.sequelize.literal(`JSON_CONTAINS(kcalOptions, '${userBMR}')`)
+										]
+									})
+							},
+							attributes: { exclude: ["isActive", "createdAt", "updatedAt"] },
+							required: false, // Don't filter out dish categories without matching meals
+							include: [
+								{
+									model: db.mealTypes,
+									attributes: ["id", "title"]
+								}
+							]
+						}
+					]
+				}
+			],
+			order: [
+				["title", "ASC"],
+				[db.dishesCategories, "title", "ASC"],
+				[db.dishesCategories, db.meals, "title", "ASC"]
+			]
+		});
+
+		// Clean up empty relationships
+		const cleanResult = categories
+			.map((category) => {
+				const categoryData = category.toJSON();
+
+				categoryData.dishesCategories =
+					categoryData.dishesCategories
+						?.map((dishCategory) => {
+							// Filter out dish categories with no meals (for non-admin)
+							if (!isAdmin && (!dishCategory.meals || dishCategory.meals.length === 0)) {
+								return null;
+							}
+							return dishCategory;
+						})
+						.filter(Boolean) || [];
+
+				return categoryData;
+			})
+			.filter((category) => category.dishesCategories.length > 0);
+
+		encryptHelper(cleanResult);
+
+		return res.status(200).json({
+			message: "Meal plans retrieved successfully",
+			data: cleanResult,
+			...(!isAdmin && { userBMR })
+		});
+	} catch (err) {
+		console.error("Error retrieving meal plans:", err);
+		res.status(500).json({
+			message: err.message || "Some error occurred while retrieving meal plans."
+		});
+	}
+};
+
 exports.update = async (req, res) => {
 	const t = await sequelize.transaction();
 
