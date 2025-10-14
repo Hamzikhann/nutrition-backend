@@ -213,13 +213,12 @@ exports.listv2 = async (req, res) => {
 		const isAdmin = role === "Administrator" || role === "Subadmin";
 		let userBMR = null;
 
-		// Get user BMR early for non-admin
 		if (!isAdmin) {
 			const userId = crypto.decrypt(req.userId);
 			const user = await db.users.findOne({
 				where: { id: userId, isActive: "Y" },
 				attributes: ["bmr"],
-				raw: true // Faster for single attribute
+				raw: true
 			});
 
 			if (!user?.bmr) {
@@ -228,7 +227,7 @@ exports.listv2 = async (req, res) => {
 			userBMR = parseInt(user.bmr);
 		}
 
-		// Single optimized query
+		// Use database-level filtering with LIKE for comma-separated strings
 		const categories = await db.categories.findAll({
 			where: { isActive: "Y" },
 			attributes: ["id", "title"],
@@ -237,7 +236,7 @@ exports.listv2 = async (req, res) => {
 					model: db.dishesCategories,
 					where: { isActive: "Y" },
 					attributes: ["id", "title", "image"],
-					required: false, // Changed to false to avoid filtering out categories
+					required: false,
 					include: [
 						{
 							model: db.meals,
@@ -245,16 +244,15 @@ exports.listv2 = async (req, res) => {
 								isActive: "Y",
 								...(!isAdmin &&
 									userBMR && {
-										[db.Sequelize.Op.or]: [
-											// Handle different kcalOptions formats
-											db.sequelize.literal(`kcalOptions LIKE '%${userBMR}%'`),
-											db.sequelize.literal(`JSON_CONTAINS(kcalOptions, '"${userBMR}"')`),
-											db.sequelize.literal(`JSON_CONTAINS(kcalOptions, '${userBMR}')`)
-										]
+										kcalOptions: {
+											[db.Sequelize.Op.like]: `%${userBMR}%`
+										}
 									})
 							},
-							attributes: { exclude: ["isActive", "createdAt", "updatedAt"] },
-							required: false, // Don't filter out dish categories without matching meals
+							attributes: {
+								exclude: ["isActive", "createdAt", "updatedAt"]
+							},
+							required: !isAdmin, // For non-admin, only include matching meals
 							include: [
 								{
 									model: db.mealTypes,
@@ -272,31 +270,16 @@ exports.listv2 = async (req, res) => {
 			]
 		});
 
-		// Clean up empty relationships
-		const cleanResult = categories
-			.map((category) => {
-				const categoryData = category.toJSON();
+		// For non-admin, we need to clean up empty categories/dish categories
+		const finalResult = categories
+			.map((category) => category.toJSON())
+			.filter((category) => category.dishesCategories && category.dishesCategories.length > 0);
 
-				categoryData.dishesCategories =
-					categoryData.dishesCategories
-						?.map((dishCategory) => {
-							// Filter out dish categories with no meals (for non-admin)
-							if (!isAdmin && (!dishCategory.meals || dishCategory.meals.length === 0)) {
-								return null;
-							}
-							return dishCategory;
-						})
-						.filter(Boolean) || [];
-
-				return categoryData;
-			})
-			.filter((category) => category.dishesCategories.length > 0);
-
-		encryptHelper(cleanResult);
+		encryptHelper(finalResult);
 
 		return res.status(200).json({
 			message: "Meal plans retrieved successfully",
-			data: cleanResult,
+			data: finalResult,
 			...(!isAdmin && { userBMR })
 		});
 	} catch (err) {
