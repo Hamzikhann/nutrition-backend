@@ -313,6 +313,8 @@ exports.updateStatus = async (req, res) => {
 				}
 			});
 			if (!workOutDay) {
+				console.log("not done");
+
 				return res.status(400).send({
 					message: "Work out day exercise not found"
 				});
@@ -324,6 +326,8 @@ exports.updateStatus = async (req, res) => {
 			});
 
 			if (findWorkoutCompleted) {
+				console.log("already");
+
 				return res.status(400).send({
 					message: "Work out day already completed"
 				});
@@ -339,6 +343,7 @@ exports.updateStatus = async (req, res) => {
 			});
 		}
 	} catch (err) {
+		console.log(err);
 		return res.status(400).send({
 			message: err.message || "Some error occurred while updating the work out day exercise."
 		});

@@ -53,6 +53,7 @@ router.post("/list/workoutdays", (req, res) => {
 });
 
 router.post("/update/status", (req, res) => {
+	console.log("role", req.role);
 	if (req.role == "User") {
 		workoutDayExercisesController.updateStatus(req, res);
 	} else {
