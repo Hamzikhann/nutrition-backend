@@ -306,7 +306,9 @@ exports.updateStatus = async (req, res) => {
 			});
 		} else {
 			const { id } = value;
-			console.log(crypto.decrypt(req.userId));
+			console.log("user id", crypto.decrypt(req.userId));
+			console.log("workout day id", crypto.decrypt(id));
+
 			const workOutDay = await WorkoutDays.findOne({
 				where: {
 					id: crypto.decrypt(id)
@@ -337,7 +339,7 @@ exports.updateStatus = async (req, res) => {
 				userId: crypto.decrypt(req.userId), //req.userId
 				workoutDayId: crypto.decrypt(id)
 			});
-
+			console.log(updateWorkoutCompleted);
 			return res.status(200).send({
 				message: "Work out day exercise updated successfully"
 			});
