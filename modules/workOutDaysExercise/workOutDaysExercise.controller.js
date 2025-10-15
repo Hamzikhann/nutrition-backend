@@ -10,6 +10,8 @@ const Exercise = db.exercises;
 const WorkoutsCompletions = db.workoutsCompletions;
 const Plan = db.plans;
 const UserPlan = db.userPlans;
+const User = db.users;
+
 exports.listofAdmin = async (req, res) => {
 	try {
 		let workout = await Week.findAll({
@@ -99,7 +101,12 @@ exports.list = async (req, res) => {
 						},
 						{
 							model: WorkoutsCompletions,
-							required: false
+							required: false,
+							include: [
+								{
+									model: User
+								}
+							]
 						}
 					],
 					attributes: {
@@ -299,6 +306,7 @@ exports.updateStatus = async (req, res) => {
 			});
 		} else {
 			const { id } = value;
+			console.log(crypto.decrypt(req.userId));
 			const workOutDay = await WorkoutDays.findOne({
 				where: {
 					id: crypto.decrypt(id)

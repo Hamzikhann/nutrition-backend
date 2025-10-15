@@ -53,7 +53,13 @@ router.post("/list/workoutdays", (req, res) => {
 });
 
 router.post("/update/status", (req, res) => {
-	workoutDayExercisesController.updateStatus(req, res);
+	if (req.role == "User") {
+		workoutDayExercisesController.updateStatus(req, res);
+	} else {
+		return res.status(400).send({
+			message: "You are not authorized to update the status"
+		});
+	}
 });
 
 router.post("/create/week", (req, res) => {
