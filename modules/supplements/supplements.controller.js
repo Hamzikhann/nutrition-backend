@@ -16,6 +16,7 @@ exports.create = async (req, res) => {
 			title: Joi.string().required(),
 			description: Joi.string().optional(),
 			externalLink: Joi.string().optional(),
+			dosage: Joi.string().optional(),
 			supplementCategoryId: Joi.string().optional()
 		});
 
@@ -34,6 +35,7 @@ exports.create = async (req, res) => {
 			title: req.body.title,
 			description: req.body.description,
 			externalLink: req.body.externalLink,
+			dosage: req.body.dosage,
 			supplementsCategoryId: crypto.decrypt(req.body.supplementCategoryId),
 			image: image
 		};
@@ -223,6 +225,7 @@ exports.update = async (req, res) => {
 			title: Joi.string().required(),
 			description: Joi.string().optional().allow("").allow(null),
 			externalLink: Joi.string().optional().allow("").allow(null),
+			dosage: Joi.string().optional().allow("").allow(null),
 			supplementCategoryId: Joi.string().optional().allow("").allow(null),
 			image: Joi.string().optional().allow("").allow(null)
 		});
@@ -232,12 +235,13 @@ exports.update = async (req, res) => {
 			return res.status(400).send({ message: error.details[0].message });
 		}
 
-		const { id, title, description, externalLink, supplementCategoryId } = req.body;
+		const { id, title, description, externalLink, dosage, supplementCategoryId } = req.body;
 
 		let updateObj = {
 			title: title,
 			description: description,
 			externalLink: externalLink,
+			dosage: dosage,
 			supplementsCategoryId: crypto.decrypt(supplementCategoryId)
 		};
 

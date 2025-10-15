@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
 			description: DataTypes.STRING,
 			image: DataTypes.STRING,
 			externalLink: DataTypes.STRING,
+			dosage: DataTypes.STRING,
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,

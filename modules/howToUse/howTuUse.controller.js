@@ -11,6 +11,7 @@ exports.create = async (req, res) => {
 	try {
 		const schema = joi.object({
 			title: joi.string().required(),
+			description: joi.string().required(),
 			categoryId: joi.string().required()
 		});
 		const { error } = schema.validate(req.body);
@@ -19,7 +20,7 @@ exports.create = async (req, res) => {
 				message: error.details[0].message
 			});
 		}
-		const { title, categoryId } = req.body;
+		const { title, description, categoryId } = req.body;
 
 		const category = await HowToUseCategories.findOne({
 			where: {
@@ -37,6 +38,7 @@ exports.create = async (req, res) => {
 
 		const howToUse = await HowToUse.create({
 			title,
+			description,
 			media,
 			howTouseCategoryId: category.id
 		});
@@ -81,6 +83,7 @@ exports.update = async (req, res) => {
 	try {
 		const schema = joi.object({
 			title: joi.string().required(),
+			description: joi.string().required(),
 			id: joi.string().required(),
 			categoryId: joi.string().required()
 		});
@@ -90,9 +93,10 @@ exports.update = async (req, res) => {
 				message: error.details[0].message
 			});
 		}
-		const { title, categoryId, id } = req.body;
+		const { title, description, categoryId, id } = req.body;
 		let updateObje = {
 			title,
+			description,
 			howTouseCategoryId: crypto.decrypt(categoryId)
 		};
 

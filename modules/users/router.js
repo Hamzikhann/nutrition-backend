@@ -51,6 +51,14 @@ router.post("/delete", (req, res) => {
 	}
 });
 
+router.post("/deactivate", (req, res) => {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		usersController.deactivate(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
+});
+
 // router.post("/reset/credentials", (req, res) => {
 // 	if (req.role == "Administrator" || req.role == "Client") {
 // 		usersController.reset(req, res);
@@ -89,6 +97,14 @@ router.post("/progress", (req, res) => {
 
 router.post("/habit/progress", (req, res) => {
 	usersController.getHabitProgress(req, res);
+});
+
+router.post("/update/bmr", (req, res) => {
+	if (req.role == "Administrator" || req.role === "Subadmin") {
+		usersController.updateBmr(req, res);
+	} else {
+		res.status(403).send({ message: "Forbidden Access" });
+	}
 });
 
 module.exports = router;

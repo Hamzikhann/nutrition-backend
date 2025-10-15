@@ -26,6 +26,11 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: false,
 				defaultValue: "Y"
+			},
+			isdeleted: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				defaultValue: "N"
 			}
 		},
 		{ timestamps: true }

@@ -436,7 +436,7 @@ exports.listUsers = (req, res) => {
 		// const where = { isActive: "Y" };
 
 		Users.findAll({
-			// where,
+			where: {  isdeleted: "N" },
 
 			include: [
 				// {
@@ -500,7 +500,7 @@ exports.listUsers = (req, res) => {
 
 exports.listEmployees = (req, res) => {
 	try {
-		const where = { isActive: "Y" };
+		const where = { isdeleted: "N" };
 
 		Users.findAll({
 			where,
@@ -698,7 +698,7 @@ exports.changePassword = async (req, res) => {
 	}
 };
 
-exports.delete = (req, res) => {
+exports.deactivate = (req, res) => {
 	try {
 		const userId = crypto.decrypt(req.body.userId);
 
@@ -711,6 +711,36 @@ exports.delete = (req, res) => {
 				} else {
 					res.send({
 						message: `Cannot deactivate User. Maybe User was not found!`
+					});
+				}
+			})
+			.catch((err) => {
+				emails.errorEmail(req, err);
+				res.status(500).send({
+					message: "Error deleting User"
+				});
+			});
+	} catch (err) {
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred."
+		});
+	}
+};
+
+exports.delete = (req, res) => {
+	try {
+		const userId = crypto.decrypt(req.body.userId);
+
+		Users.update({ isdeleted: "Y" }, { where: { id: userId } })
+			.then(async (num) => {
+				if (num == 1) {
+					res.send({
+						message: "User was deleted successfully."
+					});
+				} else {
+					res.send({
+						message: `Cannot deleted  User. Maybe User was not found!`
 					});
 				}
 			})
@@ -1050,6 +1080,42 @@ exports.updateEmployee = async (req, res) => {
 		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred."
+		});
+	}
+};
+
+exports.updateBmr = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			userId: Joi.string().required(),
+			bmr: Joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const userId = crypto.decrypt(req.body.userId);
+			const bmr = req.body.bmr;
+
+			const user = await Users.update({ bmr }, { where: { id: userId } });
+
+			if (user[0] === 1) {
+				return res.status(200).send({
+					message: "BMR updated successfully",
+					data: user
+				});
+			} else {
+				return res.status(404).send({
+					message: "User not found or BMR not updated"
+				});
+			}
+		}
+	} catch (err) {
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred while updating BMR."
 		});
 	}
 };
