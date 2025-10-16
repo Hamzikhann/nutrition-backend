@@ -75,7 +75,7 @@ exports.getComments = async (req, res) => {
 
 		// If not cached, fetch from DB
 		const comments = await communityComments.findAll({
-			where: { communityPostId: postId },
+			where: { communityPostId: postId, isActive: "Y" },
 			include: [{ model: users }],
 			order: [["createdAt", "DESC"]]
 		});
