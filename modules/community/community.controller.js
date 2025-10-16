@@ -298,7 +298,7 @@ exports.detail = async (req, res) => {
 			// Add comment counts manually
 			for (let post of posts) {
 				const count = await CommunityComments.count({
-					where: { communityPostId: post.id }
+					where: { communityPostId: post.id, isActive: "Y" }
 				});
 				post.setDataValue("commentsCount", count);
 			}
