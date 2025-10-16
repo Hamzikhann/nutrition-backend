@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
 			lastName: DataTypes.STRING,
 			phoneNo: DataTypes.STRING,
 			email: DataTypes.STRING,
+			age: DataTypes.INTEGER,
 			isFormCreated: {
 				type: DataTypes.STRING,
 				defaultValue: "N"

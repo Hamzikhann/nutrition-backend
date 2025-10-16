@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
 			zipcode: DataTypes.STRING,
 			country: DataTypes.STRING,
 			imageUrl: DataTypes.STRING,
+			about: DataTypes.TEXT,
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,

@@ -38,7 +38,7 @@ router.post("/create", upload.single("image"), (req, res) => {
 // 	}
 // });
 
-// router.post("/update/profile", usersController.updateProfile);
+router.post("/update/profile", upload.single("image"), usersController.updateProfile);
 // router.post("/update/profile/image", upload.single("image"), usersController.updateProfileImage);
 // router.post("/update/password", usersController.changePassword);
 // router.post("/detail", usersController.detail);

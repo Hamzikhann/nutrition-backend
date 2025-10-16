@@ -320,74 +320,116 @@ exports.getUserProgress = async (req, res) => {
 // 	}
 // };
 
-// exports.updateProfile = async (req, res) => {
-// 	try {
-// 		const joiSchema = Joi.object({
-// 			firstName: Joi.string().required(),
-// 			lastName: Joi.string().required(),
-// 			email: Joi.string().required(),
-// 			jobTitle: Joi.string().optional().allow(null).allow(""),
-// 			phoneNumber: Joi.string().optional().allow(null).allow(""),
-// 			skype: Joi.string().optional().allow(null).allow(""),
-// 			address: Joi.string().optional().allow(null).allow(""),
-// 			city: Joi.string().optional().allow(null).allow(""),
-// 			state: Joi.string().optional().allow(null).allow(""),
-// 			zipcode: Joi.string().optional().allow(null).allow(""),
-// 			country: Joi.string().optional().allow(null).allow("")
-// 		});
-// 		const { error, value } = joiSchema.validate(req.body);
+exports.updateProfile = async (req, res) => {
+	try {
+		const joiSchema = Joi.object({
+			firstName: Joi.string().required(),
+			lastName: Joi.string().required(),
+			email: Joi.string().email().required(),
+			age: Joi.number().integer().min(1).max(120).optional().allow(null),
+			phoneNo: Joi.string().optional().allow(null).allow(""),
+			about: Joi.string().optional().allow(null).allow("")
+		});
+		const { error, value } = joiSchema.validate(req.body);
 
-// 		if (error) {
-// 			emails.errorEmail(req, error);
+		if (error) {
+			emails.errorEmail(req, error);
+			const message = error.details[0].message.replace(/"/g, "");
+			res.status(400).send({
+				message: message
+			});
+		} else {
+			const userId = crypto.decrypt(req.userId);
 
-// 			const message = error.details[0].message.replace(/"/g, "");
-// 			res.status(400).send({
-// 				message: message
-// 			});
-// 		} else {
-// 			const userId = crypto.decrypt(req.userId);
-// 			const profileId = crypto.decrypt(req.profileId);
+			// Check if user exists
+			const existingUser = await Users.findOne({ where: { id: userId, isActive: "Y" } });
+			if (!existingUser) {
+				return res.status(404).send({
+					message: "User not found."
+				});
+			}
 
-// 			var user = {
-// 				firstName: req.body.firstName?.trim(),
-// 				lastName: req.body.lastName?.trim(),
-// 				email: req.body.email?.trim()
-// 			};
-// 			var profile = {
-// 				jobTitle: req.body.jobTitle,
-// 				phoneNumber: req.body.phoneNumber,
-// 				skype: req.body.skype,
-// 				address: req.body.address,
-// 				city: req.body.city,
-// 				state: req.body.state,
-// 				zipcode: req.body.zipcode,
-// 				country: req.body.country
-// 			};
+			// Check for email uniqueness (exclude current user)
+			const emailExists = await Users.findOne({
+				where: {
+					email: req.body.email?.trim(),
+					isActive: "Y",
+					id: { [Op.ne]: userId }
+				}
+			});
+			if (emailExists) {
+				return res.status(400).send({
+					message: "Email already exists."
+				});
+			}
 
-// 			var transaction = await sequelize.transaction();
+			let imageUrl = existingUser.imageURL;
+			if (req.file) {
+				// Upload new image
+				imageUrl = await uploadFileToSpaces(req.file, "users");
+			}
 
-// 			var updateUser = await Users.update(user, { where: { id: userId, isActive: "Y" }, transaction });
-// 			var updateProfile = await UserProfile.update(profile, { where: { id: profileId, isActive: "Y" }, transaction });
+			const userUpdate = {
+				firstName: req.body.firstName?.trim(),
+				lastName: req.body.lastName?.trim(),
+				email: req.body.email?.trim(),
+				age: req.body.age,
+				phoneNo: req.body.phoneNo,
+				imageURL: imageUrl
+			};
 
-// 			if (updateUser == 1 && updateProfile == 1) {
-// 				if (transaction) await transaction.commit();
-// 				res.send({
-// 					message: "User profile updated successfully."
-// 				});
-// 			} else {
-// 				if (transaction) await transaction.rollback();
-// 				res.send({
-// 					message: "Failed to update user profile."
-// 				});
-// 			}
-// 		}
-// 	} catch (err) {
-// 		emails.errorEmail(req, err);
-// 		res.status(500).send({
-// 			message: err.message || "Some error occurred."
-// 		});
-// 	}
-// };
+			const profileUpdate = {
+				about: req.body.about
+			};
+
+			const transaction = await sequelize.transaction();
+
+			try {
+				await Users.update(userUpdate, { where: { id: userId, isActive: "Y" }, transaction });
+
+				// Update or create userProfile
+				const existingProfile = await UserProfile.findOne({ where: { userId, isActive: "Y" } });
+				if (existingProfile) {
+					await UserProfile.update(profileUpdate, { where: { userId, isActive: "Y" }, transaction });
+				} else {
+					await UserProfile.create({ ...profileUpdate, userId }, { transaction });
+				}
+
+				await transaction.commit();
+
+				// Fetch updated user with profile
+				const updatedUser = await Users.findOne({
+					where: { id: userId, isActive: "Y" },
+					include: [
+						{
+							model: UserProfile,
+							attributes: ["about"]
+						}
+					],
+					attributes: ["id", "firstName", "lastName", "email", "age", "phoneNo", "imageURL"]
+				});
+
+				encryptHelper(updatedUser);
+
+				res.status(200).send({
+					message: "Profile updated successfully.",
+					data: updatedUser
+				});
+			} catch (err) {
+				await transaction.rollback();
+				emails.errorEmail(req, err);
+				res.status(500).send({
+					message: err.message || "Some error occurred while updating profile."
+				});
+			}
+		}
+	} catch (err) {
+		emails.errorEmail(req, err);
+		res.status(500).send({
+			message: err.message || "Some error occurred."
+		});
+	}
+};
 
 // exports.updateProfileImage = async (req, res) => {
 // 	try {
