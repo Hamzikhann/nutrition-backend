@@ -73,6 +73,16 @@ router.post("/create/week", (req, res) => {
 	}
 });
 
+router.post("/update", (req, res) => {
+	if (req.role == "Administrator" || req.role == "Subadmin") {
+		workoutDayExercisesController.update(req, res);
+	} else {
+		return res.status(400).send({
+			message: "Only Administrator can update workout day exercises"
+		});
+	}
+});
+
 router.post("/delete", (req, res) => {
 	if (req.role == "Administrator" || req.role == "Subadmin") {
 		workoutDayExercisesController.delete(req, res);

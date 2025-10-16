@@ -427,6 +427,90 @@ function convertDurationToWeeks(duration) {
 	return 0;
 }
 
+exports.update = async (req, res) => {
+	try {
+		const schema = joi.object({
+			id: joi.string().required(),
+			weekId: joi.string().optional(),
+			workoutDayId: joi.string().optional(),
+			exerciseId: joi.string().optional(),
+			sets: joi.string().optional(),
+			reps: joi.string().optional()
+		});
+		const { error, value } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const { id, weekId, workoutDayId, exerciseId, sets, reps } = value;
+			const decryptedId = crypto.decrypt(id);
+
+			const workOutDayExercise = await WorkOutDayExercises.findOne({
+				where: { id: decryptedId }
+			});
+			if (!workOutDayExercise) {
+				return res.status(400).send({
+					message: "Workout day exercise not found"
+				});
+			}
+
+			const updateData = {};
+			if (weekId) {
+				const week = await Week.findOne({
+					where: { id: crypto.decrypt(weekId) }
+				});
+				if (!week) {
+					return res.status(400).send({
+						message: "Week not found"
+					});
+				}
+				updateData.weekId = crypto.decrypt(weekId);
+			}
+			if (workoutDayId) {
+				const workoutDays = await WorkoutDays.findOne({
+					where: { id: crypto.decrypt(workoutDayId) }
+				});
+				if (!workoutDays) {
+					return res.status(400).send({
+						message: "Workout day not found"
+					});
+				}
+				updateData.workoutDayId = crypto.decrypt(workoutDayId);
+			}
+			if (exerciseId) {
+				const exercise = await Exercise.findOne({
+					where: { id: crypto.decrypt(exerciseId) }
+				});
+				if (!exercise) {
+					return res.status(400).send({
+						message: "Exercise not found"
+					});
+				}
+				updateData.exerciseId = crypto.decrypt(exerciseId);
+			}
+			if (sets) updateData.sets = sets;
+			if (reps) updateData.reps = reps;
+
+			const [updateCount] = await WorkOutDayExercises.update(updateData, { where: { id: decryptedId } });
+
+			if (updateCount) {
+				return res.status(200).send({
+					message: "Workout day exercise updated successfully"
+				});
+			} else {
+				return res.status(400).send({
+					message: "Failed to update workout day exercise"
+				});
+			}
+		}
+	} catch (err) {
+		return res.status(400).send({
+			message: err.message || "Some error occurred while updating the workout day exercise."
+		});
+	}
+};
+
 exports.delete = async (req, res) => {
 	try {
 		const schema = joi.object({
