@@ -10,6 +10,7 @@ const routes = require("./routes/routes");
 const db = require("./models/index");
 const cornJob = require("./utils/cornJob");
 const { initSocket } = require("./utils/socketService");
+const admin = require("firebase-admin");
 
 const dateFormatter = require("./utils/dateFormatter");
 
