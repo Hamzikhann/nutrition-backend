@@ -14,6 +14,7 @@ const { initSocket } = require("./utils/socketService");
 const dateFormatter = require("./utils/dateFormatter");
 
 // Initialize Firebase Admin SDK (if needed)
+const serviceAccount = require("./fitcysters-ce4c3-firebase-adminsdk-fbsvc-5837f79c49.json"); // Replace with your key
 
 class Server {
 	constructor() {
@@ -45,6 +46,10 @@ class Server {
 		});
 
 		this.app.use(dateFormatter);
+
+		admin.initializeApp({
+			credential: admin.credential.cert(serviceAccount)
+		});
 
 		// 🔹 Make Redis available to all requests
 		this.app.use((req, res, next) => {

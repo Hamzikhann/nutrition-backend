@@ -1,18 +1,111 @@
 const db = require("../../models");
-// const socketService = require("../../utils/socketService");
 const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
+const Notifications = require("../../utils/notificationsHelper");
 
 const { sequelize } = db;
 const CommunityLikes = db.communityLikes;
 const CommunityLikesCounter = db.communitylikesCounter;
+const CommunityPosts = db.communityPosts;
+const Users = db.users;
+
+// Helper function to send reaction notifications
+const sendReactionNotification = async (postId, userId, reactionType, action = "added") => {
+	try {
+		// Get post details and owner
+		const post = await CommunityPosts.findOne({
+			where: { id: postId },
+			include: [
+				{
+					model: Users,
+					attributes: ["id", "firstName", "lastName"]
+				}
+			],
+			attributes: ["id", "title", "userId"]
+		});
+
+		if (!post) return;
+
+		// Get reactor info
+		const reactor = await Users.findOne({
+			where: { id: userId },
+			attributes: ["id", "firstName", "lastName"]
+		});
+
+		if (!reactor) return;
+
+		// Don't notify if user is reacting to their own post
+		if (post.userId === userId) return;
+
+		const actionText = action === "added" ? "reacted to" : "removed reaction from";
+		const notificationType = action === "added" ? "community_reaction" : "community_reaction_removed";
+
+		// Map reaction type to emoji for better notification display
+		const reactionEmojis = {
+			love: "❤️"
+		};
+
+		const emoji = reactionEmojis[reactionType] || "👍";
+
+		await Notifications.sendFcmNotification(
+			post.userId,
+			`${emoji} New Reaction on Your Post`,
+			`${reactor.firstName} ${reactor.lastName} ${actionText} your post: "${post.title}"`,
+			notificationType,
+			{
+				postId: postId.toString(),
+				reactorId: userId.toString(),
+				reactionType: reactionType,
+				emoji: emoji
+			}
+		);
+	} catch (error) {
+		console.error("Error sending reaction notification:", error);
+	}
+};
+
+// Helper function to send multiple reaction notifications for popular posts
+const sendPopularPostNotification = async (postId, reactionCount) => {
+	try {
+		const post = await CommunityPosts.findOne({
+			where: { id: postId },
+			include: [
+				{
+					model: Users,
+					attributes: ["id", "firstName", "lastName"]
+				}
+			],
+			attributes: ["id", "title", "userId"]
+		});
+
+		if (!post) return;
+
+		// Send notification to post owner when post reaches certain milestones
+		const milestones = [5, 10, 25, 50, 100];
+		if (milestones.includes(reactionCount)) {
+			await Notifications.sendFcmNotification(
+				post.userId,
+				"🎉 Your Post is Getting Popular!",
+				`Your post "${post.title}" has reached ${reactionCount} reactions!`,
+				"community_post_popular",
+				{
+					postId: postId.toString(),
+					reactionCount: reactionCount.toString(),
+					milestone: reactionCount.toString()
+				}
+			);
+		}
+	} catch (error) {
+		console.error("Error sending popular post notification:", error);
+	}
+};
 
 /**
  * Write-through strategy:
  * - Update raw reaction row
  * - Update counts table (increment/decrement)
  * - Update Redis cache (if available)
- * - Emit Socket.IO event to viewers of that post
+ * - Send FCM notifications
  */
 exports.addOrUpdateReaction = async (req, res) => {
 	const t = await sequelize.transaction();
@@ -63,6 +156,9 @@ exports.addOrUpdateReaction = async (req, res) => {
 			count: r.count
 		}));
 
+		// Calculate total reactions for popular post notification
+		const totalReactions = counts.reduce((sum, reaction) => sum + reaction.count, 0);
+
 		// update Redis cache (write-through)
 		const redis = req.app.get("redis");
 		if (redis) {
@@ -73,8 +169,15 @@ exports.addOrUpdateReaction = async (req, res) => {
 			await redis.expire(key, 300); // 5 min TTL
 		}
 
-		// ✅ Notify all users in post room
-		// socketService.emitToPostRoom(postId, "reactionUpdate", { postId, counts });
+		// Send notifications only for new reactions
+		if (!existing) {
+			// Send reaction notification to post owner
+			await sendReactionNotification(postId, userId, reactionType, "added");
+
+			// Check for popular post milestone
+			await sendPopularPostNotification(postId, totalReactions);
+		}
+
 		postId = crypto.encrypt(postId);
 		return res.json({ success: true, postId, counts });
 	} catch (err) {
@@ -104,13 +207,15 @@ exports.removeReaction = async (req, res) => {
 			return res.status(200).json({ success: true, postId, counts: [] });
 		}
 
+		const reactionType = existing.reactionType;
+
 		await existing.destroy({ transaction: t });
 
 		// decrement count for existing type
 		await CommunityLikesCounter.increment(
 			{ count: -1 },
 			{
-				where: { communityPostId: postId, reactionType: "love" },
+				where: { communityPostId: postId, reactionType: reactionType },
 				transaction: t
 			}
 		);
@@ -138,8 +243,9 @@ exports.removeReaction = async (req, res) => {
 			await redis.expire(key, 300);
 		}
 
-		// ✅ Notify all users in post room
-		// socketService.emitToPostRoom(postId, "reactionUpdate", { postId, counts });
+		// Send notification for reaction removal
+		await sendReactionNotification(postId, userId, reactionType, "removed");
+
 		postId = crypto.encrypt(postId);
 		return res.json({ success: true, postId, counts });
 	} catch (err) {
@@ -220,27 +326,28 @@ exports.list = async (req, res) => {
 		// ✅ Get counts per reaction (e.g., { love: 3, like: 1 })
 		const counts = await CommunityLikesCounter.findAll({
 			where: { communityPostId: postId }
-			// attributes: ["reaction", "count"]
 		});
 
 		// ✅ Get list of users who liked/reacted to the post
 		const userLikes = await CommunityLikes.findAll({
 			where: { communityPostId: postId },
-			// attributes: ["reaction", "userId", "createdAt"],
 			include: [
 				{
-					model: db.users // assuming model name is Users
-					// attributes: ["id", "name", "profileImage"] // customize as needed
+					model: db.users
 				}
 			],
-			order: [["createdAt", "DESC"]] // optional: latest first
+			order: [["createdAt", "DESC"]]
 		});
+
+		// Encrypt the response data
+		encryptHelper(counts);
+		encryptHelper(userLikes);
 
 		return res.status(200).json({
 			success: true,
 			data: {
-				counts, // [{ reaction: "love", count: 3 }, ...]
-				userLikes // [{ userId: 1, reaction: "love", User: { id, name, profileImage } }, ...]
+				counts,
+				userLikes
 			}
 		});
 	} catch (err) {

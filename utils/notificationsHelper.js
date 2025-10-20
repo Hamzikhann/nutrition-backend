@@ -1,63 +1,59 @@
-// const admin = require("firebase-admin");
-// const socketService = require("../utils/socketService");
-// const crypto = require("../utils/crypto");
-// const db = require("../models");
-// const Users = db.users;
-// const Notification = db.notifications;
+const admin = require("firebase-admin");
+const crypto = require("../utils/crypto");
+const db = require("../models");
+const Users = db.users;
+const Notification = db.notifications;
 
-// /**
-//  * Notification component
-//  * @constructor
-//  */
+/**
+ * Notification component
+ * @constructor
+ */
 
-// function Notifications() {}
+function Notifications() {}
 
-// Notifications.sendSocketNotification = async ({ toUserId, event, data = {} }) => {
-// 	try {
-// 		// const userId = isNaN(toUserId) ? toUserId : toUserId;
-// 		socketService.emitToUser(toUserId, event, data);
+Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {}) => {
+	try {
+		const userId = isNaN(toUserId) ? crypto.decrypt(toUserId) : toUserId;
 
-// 		return true;
-// 	} catch (err) {
-// 		console.error("sendSocketNotification error:", err.message);
-// 		return false;
-// 	}
-// };
+		const user = await Users.findOne({
+			where: { id: userId, isActive: "Y" }
+		});
 
-// Notifications.sendFcmNotification = async (toUserId, title, body, type) => {
-// 	try {
-// 		const userId = isNaN(toUserId) ? crypto.decrypt(toUserId) : toUserId;
+		if (!user || !user.fcmToken) {
+			console.warn("FCM: No valid user or token found for user ID:", userId);
+			return false;
+		}
 
-// 		const user = await Users.findOne({
-// 			where: { id: userId, isActive: "Y" }
-// 		});
+		const message = {
+			token: user.fcmToken,
+			notification: {
+				title,
+				body
+			},
+			data: {
+				type: type || "general",
+				...data
+			}
+		};
 
-// 		if (!user || !user.fcmToken) {
-// 			console.warn("FCM: No valid user or token found");
-// 			return false;
-// 		}
+		await admin.messaging().send(message);
 
-// 		await admin.messaging().send({
-// 			token: user.fcmToken,
-// 			notification: {
-// 				title,
-// 				body
-// 			}
-// 		});
-// 		let createNotificationObj = {
-// 			userId: userId,
-// 			title: title,
-// 			body: body,
-// 			isRead: false,
-// 			type: type
-// 		};
+		let createNotificationObj = {
+			userId: userId,
+			title: title,
+			body: body,
+			isRead: false,
+			type: type || "general"
+		};
 
-// 		let createNotification = await Notification.create(createNotificationObj);
+		await Notification.create(createNotificationObj);
 
-// 		return true;
-// 	} catch (err) {
-// 		console.error("sendFcmNotification error:", err.message);
-// 		return false;
-// 	}
-// };
-// module.exports = Notifications;
+		console.log(`FCM notification sent to user ${userId}: ${title}`);
+		return true;
+	} catch (err) {
+		console.error("sendFcmNotification error:", err.message);
+		return false;
+	}
+};
+
+module.exports = Notifications;

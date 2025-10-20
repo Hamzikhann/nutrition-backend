@@ -26,7 +26,6 @@ const Plans = db.plans;
 exports.login = async (req, res) => {
 	try {
 		const decryptedUserId = crypto.decrypt(req.body.userId);
-console.log("Decrypted User ID:", decryptedUserId);
 		const userExist = await Users.findOne({
 			where: {
 				id: decryptedUserId,
@@ -83,6 +82,9 @@ console.log("Decrypted User ID:", decryptedUserId);
 		}
 
 		// Encrypt user object (your existing helper)
+		if (req.body.fcmToken) {
+			let updateUser = Users.update({ fcmToken: req.body.fcmToken }, { where: { id: user.id } });
+		}
 		encryptHelper(user);
 
 		// Generate JWT

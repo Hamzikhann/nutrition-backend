@@ -6,7 +6,88 @@ const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
 const deepenclone = require("../../utils/deepencryptedIds");
 // TTL for cache in seconds
+const Notifications = require("../../utils/notificationsHelper");
+
+// TTL for cache in seconds
 const CACHE_TTL = 60;
+
+// Helper function to send comment notifications
+const sendCommentNotification = async (postId, commenterId, commentText, action = "added") => {
+	try {
+		// Get post details and owner
+		const post = await communityPosts.findOne({
+			where: { id: postId },
+			include: [
+				{
+					model: users,
+					attributes: ["id", "firstName", "lastName"]
+				}
+			],
+			attributes: ["id", "title", "userId"]
+		});
+
+		if (!post) return;
+
+		// Get commenter info
+		const commenter = await users.findOne({
+			where: { id: commenterId },
+			attributes: ["id", "firstName", "lastName"]
+		});
+
+		if (!commenter) return;
+
+		const actionText = action === "added" ? "commented on" : "updated comment on";
+		const notificationType = action === "added" ? "community_comment" : "community_comment_updated";
+
+		// Send notification to post owner (if not the commenter themselves)
+		if (post.user.id !== commenterId) {
+			await Notifications.sendFcmNotification(
+				post.user.id,
+				"New Comment on Your Post",
+				`${commenter.firstName} ${commenter.lastName} ${actionText} your post: "${post.title}"`,
+				notificationType,
+				{
+					postId: postId.toString(),
+					commenterId: commenterId.toString(),
+					preview: commentText.substring(0, 100) // First 100 chars as preview
+				}
+			);
+		}
+
+		// For new comments, also notify other commenters on the same post
+		if (action === "added") {
+			const otherCommenters = await communityComments.findAll({
+				where: {
+					communityPostId: postId,
+					userId: {
+						[require("sequelize").Op.not]: [commenterId, post.userId] // Exclude commenter and post owner
+					},
+					isActive: "Y"
+				},
+				attributes: ["userId"],
+				group: ["userId"],
+				raw: true
+			});
+
+			const notificationPromises = otherCommenters.map((commenter) =>
+				Notifications.sendFcmNotification(
+					commenter.userId,
+					"New Comment on Post",
+					`${commenter.firstName} ${commenter.lastName} also commented on: "${post.title}"`,
+					"community_comment_activity",
+					{
+						postId: postId.toString(),
+						commenterId: commenterId.toString()
+					}
+				)
+			);
+
+			await Promise.allSettled(notificationPromises);
+		}
+	} catch (error) {
+		console.error("Error sending comment notification:", error);
+	}
+};
 
 exports.addComment = async (req, res) => {
 	const joiSchema = joi.object({
@@ -41,7 +122,10 @@ exports.addComment = async (req, res) => {
 
 		// Invalidate Redis cache for this post
 		await redis.del(`comments:${postId}`);
+
 		encryptHelper(newComment);
+		await sendCommentNotification(postId, userId, comment, "added");
+
 		return res.status(201).json({
 			message: "Comment added successfully",
 			comment: newComment
@@ -160,6 +244,8 @@ exports.updateComment = async (req, res) => {
 
 			// Invalidate Redis cache for related post
 			await redis.del(`comments:${comment.communityPostId}`);
+
+			await sendCommentNotification(comment.communityPostId, comment.userId, value.comment, "updated");
 
 			return res.status(200).json({ message: "Comment updated successfully" });
 		}

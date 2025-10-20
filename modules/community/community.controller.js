@@ -6,6 +6,7 @@ const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 const moment = require("moment-timezone");
 const { Op } = require("sequelize");
+const Notifications = require("../../utils/notificationsHelper");
 
 const CommunityCategories = db.communityCategories;
 const CommunityPosts = db.communityPosts;
@@ -14,6 +15,61 @@ const CommunityLikesCounter = db.communitylikesCounter;
 const CommunityComments = db.communityComments;
 const User = db.users;
 const CommunityPostMedia = db.communityPostMedia;
+
+const sendNotificationToAllUsers = async (title, body, type, data = {}) => {
+	try {
+		const activeUsers = await User.findAll({
+			where: {
+				isActive: "Y",
+				fcmToken: {
+					[Op.ne]: null
+				}
+			},
+			attributes: ["id"]
+		});
+
+		const notificationPromises = activeUsers.map((user) =>
+			Notifications.sendFcmNotification(user.id, title, body, type, data)
+		);
+
+		await Promise.allSettled(notificationPromises);
+		console.log(`Sent notifications to ${activeUsers.length} users`);
+	} catch (error) {
+		console.error("Error sending notifications to all users:", error);
+	}
+};
+
+// Helper function to send notifications to admins only
+const sendNotificationToAdmins = async (title, body, type, data = {}) => {
+	try {
+		const adminUsers = await User.findAll({
+			where: {
+				isActive: "Y",
+				fcmToken: {
+					[Op.ne]: null
+				}
+			},
+			include: [
+				{
+					model: db.roles,
+					where: { title: "Administrator" },
+					attributes: []
+				}
+			],
+			attributes: ["id"]
+		});
+
+		const notificationPromises = adminUsers.map((user) =>
+			Notifications.sendFcmNotification(user.id, title, body, type, data)
+		);
+
+		await Promise.allSettled(notificationPromises);
+		console.log(`Sent notifications to ${adminUsers.length} admins`);
+	} catch (error) {
+		console.error("Error sending notifications to admins:", error);
+	}
+};
+
 exports.createCategory = async (req, res) => {
 	try {
 		const joiSchema = joi.object({
@@ -131,6 +187,32 @@ exports.createPost = async (req, res) => {
 
 		// Commit transaction
 		await transaction.commit();
+
+		encryptHelper(post);
+
+		if (category.title === "Announcements") {
+			// Send to all users for announcements
+			await sendNotificationToAllUsers(
+				"New Announcement",
+				`${currentUser.firstName} ${currentUser.lastName} posted: ${title}`,
+				"community_announcement",
+				{
+					postId: post.id,
+					category: "Announcements"
+				}
+			);
+		} else {
+			// Send to all users for regular posts
+			await sendNotificationToAllUsers(
+				"New Community Post",
+				`${currentUser.firstName} ${currentUser.lastName} posted in ${category.title}`,
+				"community_post",
+				{
+					postId: post.id,
+					category: category.title
+				}
+			);
+		}
 
 		encryptHelper(post);
 		res.status(200).json({
