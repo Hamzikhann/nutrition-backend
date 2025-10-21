@@ -23,6 +23,8 @@ const UserAssesmentFormFiles = db.userAssesmentFormFiles;
 
 const SupplementsCategories = db.supplementsCategories;
 const AssignedSupplements = db.assignedSupplements;
+const UserAssesmentProgress = db.userAssesmentProgress;
+const Measurements = db.measurements;
 const Week = db.weeks;
 const WorkOutDayExercises = db.workoutDayExercises;
 const WorkoutsCompletions = db.workoutsCompletions;
@@ -512,6 +514,16 @@ exports.listUsers = (req, res) => {
 					inlude: [
 						{
 							model: SupplementsCategories,
+							required: false
+						}
+					]
+				},
+				{
+					model: UserAssesmentProgress,
+					required: false,
+					include: [
+						{
+							model: Measurements,
 							required: false
 						}
 					]
