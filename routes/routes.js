@@ -24,6 +24,7 @@ const paymentTypesRouteHandler = require("../modules/paymentTypes/router");
 const paymentTypesCategoriesRouteHandler = require("../modules/paymentTypes/paymentTypesCategories.router");
 const bannerRouteHandler = require("../modules/banner/router");
 const howToUseRouteHandler = require("../modules/howToUse/router");
+const userAssesmentProgressRouteHandler = require("../modules/userAssesmentProgress/router");
 
 class Routes {
 	constructor(app) {
@@ -53,6 +54,7 @@ class Routes {
 		this.app.use("/api/paymentTypesCategories", jwt.protect, paymentTypesCategoriesRouteHandler);
 		this.app.use("/api/banners", jwt.protect, bannerRouteHandler);
 		this.app.use("/api/howToUse", jwt.protect, howToUseRouteHandler);
+		this.app.use("/api/userAssesmentProgress", jwt.protect, userAssesmentProgressRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();

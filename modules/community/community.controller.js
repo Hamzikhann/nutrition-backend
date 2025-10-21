@@ -27,7 +27,7 @@ const sendNotificationToAllUsers = async (title, body, type, data = {}) => {
 			},
 			attributes: ["id"]
 		});
-
+		console.log(activeUsers);
 		const notificationPromises = activeUsers.map((user) =>
 			Notifications.sendFcmNotification(user.id, title, body, type, data)
 		);
