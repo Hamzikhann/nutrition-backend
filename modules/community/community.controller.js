@@ -190,6 +190,13 @@ exports.createPost = async (req, res) => {
 
 		encryptHelper(post);
 
+		let currentUser = await User.findOne({
+			where: {
+				id: userId
+			},
+			attributes: ["firstName", "lastName"]
+		});
+
 		if (category.title === "Announcements") {
 			// Send to all users for announcements
 			await sendNotificationToAllUsers(
