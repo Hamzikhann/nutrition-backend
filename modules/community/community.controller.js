@@ -220,6 +220,7 @@ exports.createPost = async (req, res) => {
 			post
 		});
 	} catch (err) {
+		console.log(err);
 		// Rollback transaction if it exists
 		if (transaction) await transaction.rollback();
 
