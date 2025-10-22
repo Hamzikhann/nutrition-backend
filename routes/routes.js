@@ -25,6 +25,8 @@ const paymentTypesCategoriesRouteHandler = require("../modules/paymentTypes/paym
 const bannerRouteHandler = require("../modules/banner/router");
 const howToUseRouteHandler = require("../modules/howToUse/router");
 const userAssesmentProgressRouteHandler = require("../modules/userAssesmentProgress/router");
+const customNotificationRouteHandler = require("../modules/customNotification/router");
+const notificationCategoriesFolderRouteHandler = require("../modules/notificationCategoriesFolder/router");
 
 class Routes {
 	constructor(app) {
@@ -55,6 +57,8 @@ class Routes {
 		this.app.use("/api/banners", jwt.protect, bannerRouteHandler);
 		this.app.use("/api/howToUse", jwt.protect, howToUseRouteHandler);
 		this.app.use("/api/userAssesmentProgress", jwt.protect, userAssesmentProgressRouteHandler);
+		this.app.use("/api/customNotification", jwt.protect, customNotificationRouteHandler);
+		this.app.use("/api/notificationCategoriesFolder", jwt.protect, notificationCategoriesFolderRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();
