@@ -8,166 +8,153 @@ const Users = db.users;
 const Notification = db.notifications;
 const Booking = db.bookings;
 
-exports.list = async (req, res) => {
+exports.getUserNotifications = async (req, res) => {
 	try {
-		const joiSchema = Joi.object({
-			userId: Joi.string().required()
+		const userId = crypto.decrypt(req.userId); // From auth middleware
+
+		const whereClause = {
+			userId,
+			isdeleted: "N"
+		};
+
+		const notifications = await db.notifications.findAndCountAll({
+			where: whereClause,
+			order: [["createdAt", "DESC"]]
 		});
-		const { error, value } = joiSchema.validate(req.body);
 
-		if (error) {
-			emails.errorEmail(req, error);
+		encryptHelper(notifications.rows);
+		res.status(200).json({
+			success: true,
+			data: {
+				notifications: notifications.rows,
+				totalCount: notifications.count
+			}
+		});
+	} catch (error) {
+		console.error("Error fetching notifications:", error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error"
+		});
+	}
+};
 
-			const message = error.details[0].message.replace(/"/g, "");
-			res.status(400).send({
-				message: message
+exports.markAsRead = async (req, res) => {
+	try {
+		const userId = crypto.decrypt(req.userId);
+		const { notificationId } = req.body;
+
+		if (!notificationId) {
+			return res.status(400).json({
+				success: false,
+				message: "Notification ID is required"
 			});
-		} else {
-			const userId = req.body.userId ? crypto.decrypt(req.body.userId) : req.body.userId;
-			Notification.findAll({
+		}
+
+		const notification = await db.notifications.findOne({
+			where: {
+				id: crypto.decrypt(notificationId),
+				userId: userId,
+				isdeleted: "N"
+			}
+		});
+
+		if (!notification) {
+			return res.status(404).json({
+				success: false,
+				message: "Notification not found"
+			});
+		}
+
+		await notification.update({
+			isRead: true,
+			readAt: new Date()
+		});
+
+		res.status(200).json({
+			success: true,
+			message: "Notification marked as read"
+		});
+	} catch (error) {
+		console.error("Error marking notification as read:", error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.deleteNotification = async (req, res) => {
+	try {
+		const userId = crypto.decrypt(req.userId);
+		const { notificationId } = req.body;
+
+		if (!notificationId) {
+			return res.status(400).json({
+				success: false,
+				message: "Notification ID is required"
+			});
+		}
+
+		const notification = await db.notifications.findOne({
+			where: {
+				id: crypto.decrypt(notificationId),
+				userId: userId,
+				isdeleted: "N"
+			}
+		});
+
+		if (!notification) {
+			return res.status(404).json({
+				success: false,
+				message: "Notification not found"
+			});
+		}
+
+		await notification.update({
+			isdeleted: "Y"
+		});
+
+		res.status(200).json({
+			success: true,
+			message: "Notification deleted successfully"
+		});
+	} catch (error) {
+		console.error("Error deleting notification:", error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.markAllAsRead = async (req, res) => {
+	try {
+		const userId = crypto.decrypt(req.userId);
+
+		await db.notifications.update(
+			{
+				isRead: true,
+				readAt: new Date()
+			},
+			{
 				where: {
 					userId: userId,
-					isActive: "Y"
-				},
-				attributes: {
-					exclude: ["updatedAt"]
-				},
-				include: [
-					{
-						model: Users,
-						where: { isActive: "Y" },
-						attributes: ["id"],
-						include: [
-							{
-								model: Booking,
-								attributes: ["id"],
-								where: { isActive: "Y" },
-								required: false
-							}
-						]
-					}
-				]
-			})
-				.then((response) => {
-					encryptHelper(response);
-
-					res.status(200).send({
-						message: "Notification Fetched",
-						data: response
-					});
-				})
-				.catch((err) => {
-					emails.errorEmail(req, err);
-					res.status(500).send({
-						message: err.message || "Some error occurred."
-					});
-				});
-		}
-	} catch (err) {
-		emails.errorEmail(req, err);
-		res.status(500).send({
-			message: err.message || "Some error occurred."
-		});
-	}
-};
-
-exports.updateIsRead = async (req, res) => {
-	try {
-		const joiSchema = Joi.object({
-			// userId: Joi.string().required(),
-			notificationIds: Joi.array().items(Joi.string()).required()
-		});
-		const { error, value } = joiSchema.validate(req.body);
-
-		if (error) {
-			emails.errorEmail(req, error);
-
-			const message = error.details[0].message.replace(/"/g, "");
-			res.status(400).send({
-				message: message
-			});
-		} else {
-			let notificationIds = req.body.notificationIds;
-			let userId = crypto.decrypt(req.userId);
-
-			const decryptedIds = notificationIds.map((id) => crypto.decrypt(id));
-
-			Notification.update(
-				{ isRead: true },
-				{
-					where: {
-						id: decryptedIds,
-						userId: userId,
-						isActive: "Y"
-					}
+					isRead: false,
+					isdeleted: "N"
 				}
-			)
-				.then((response) => {
-					res.status(200).send({
-						message: "Notification Updated"
-					});
-				})
-				.catch((err) => {
-					emails.errorEmail(req, err);
-					res.status(500).send({
-						message: err.message || "Some error occurred."
-					});
-				});
-		}
-	} catch (err) {
-		emails.errorEmail(req, err);
-		res.status(500).send({
-			message: err.message || "Some error occurred."
+			}
+		);
+
+		res.status(200).json({
+			success: true,
+			message: "All notifications marked as read"
 		});
-	}
-};
-
-exports.delete = async (req, res) => {
-	try {
-		const joiSchema = Joi.object({
-			// userId: Joi.string().required(),
-			notificationIds: Joi.array().items(Joi.string()).required()
-		});
-		const { error, value } = joiSchema.validate(req.body);
-
-		if (error) {
-			emails.errorEmail(req, error);
-
-			const message = error.details[0].message.replace(/"/g, "");
-			res.status(400).send({
-				message: message
-			});
-		} else {
-			let notificationIds = req.body.notificationIds;
-			let userId = crypto.decrypt(req.userId);
-			const decryptedIds = notificationIds.map((id) => crypto.decrypt(id));
-
-			Notification.update(
-				{ isActive: "N" },
-				{
-					where: {
-						id: decryptedIds,
-						userId: userId,
-						isActive: "Y"
-					}
-				}
-			)
-				.then((response) => {
-					res.status(200).send({
-						message: "Notification Deleted"
-					});
-				})
-				.catch((err) => {
-					emails.errorEmail(req, err);
-					res.status(500).send({
-						message: err.message || "Some error occurred."
-					});
-				});
-		}
-	} catch (err) {
-		emails.errorEmail(req, err);
-		res.status(500).send({
-			message: err.message || "Some error occurred."
+	} catch (error) {
+		console.error("Error marking all notifications as read:", error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error"
 		});
 	}
 };

@@ -40,17 +40,12 @@ const createNotification = async (req, res) => {
 			});
 		}
 
-		const notification = await db.customNotification.create({
-			title,
-			content,
-			notificationCategoriesFolderId: folderId,
-			status: "Pending"
-		});
-
 		// Send notifications to users in the folder
 		let userIds = [];
 		try {
 			userIds = JSON.parse(folder.users);
+			// Remove duplicate user IDs
+			userIds = [...new Set(userIds)];
 		} catch (error) {
 			console.error("Error parsing folder users:", error);
 			return res.status(400).json({
@@ -59,41 +54,72 @@ const createNotification = async (req, res) => {
 			});
 		}
 
-		let sendSuccess = true;
+		const notification = await db.customNotification.create({
+			title,
+			content,
+			notificationCategoriesFolderId: folderId,
+			status: "Pending",
+			totalUsers: userIds.length
+		});
+
+		let sentCount = 0;
+		let failedCount = 0;
 		const failedUsers = [];
+		const successfulUsers = [];
+		const deliveryStats = {};
+
 		for (const userId of userIds) {
 			try {
 				const result = await Notifications.sendFcmNotification(userId, title, content, "custom", {
-					notificationId: crypto.encrypt(notification.id)
+					notificationId: String(crypto.encrypt(notification.id))
 				});
-				if (!result) {
-					sendSuccess = false;
+
+				if (result) {
+					sentCount++;
+					successfulUsers.push(userId);
+					deliveryStats[userId] = { status: "sent", timestamp: new Date() };
+				} else {
+					failedCount++;
 					failedUsers.push(userId);
+					deliveryStats[userId] = { status: "failed", timestamp: new Date(), reason: "FCM failed" };
 				}
 			} catch (error) {
 				console.error(`Error sending notification to user ${userId}:`, error);
-				sendSuccess = false;
+				failedCount++;
 				failedUsers.push(userId);
+				deliveryStats[userId] = {
+					status: "failed",
+					timestamp: new Date(),
+					reason: error.message
+				};
 			}
 		}
 
-		// Update notification status
+		// Update notification status based on results
+		let finalStatus = "Failed";
+		if (sentCount === userIds.length) {
+			finalStatus = "Sent";
+		} else if (sentCount > 0) {
+			finalStatus = "Partial";
+		}
+
 		await notification.update({
-			status: sendSuccess ? "Sent" : "Failed",
-			sentAt: sendSuccess ? new Date() : null
+			status: finalStatus,
+			sentAt: sentCount > 0 ? new Date() : null,
+			sentCount,
+			failedCount,
+			successfulUsers,
+			failedUsers,
+			deliveryStats
 		});
 
 		encryptHelper(notification);
 		res.status(201).json({
 			success: true,
-			message: sendSuccess
-				? "Notification created and sent successfully"
-				: "Notification created but sending failed for some users",
+			message: getStatusMessage(finalStatus, sentCount, failedCount),
 			data: {
 				...notification.toJSON(),
-				folderName: folder.name,
-				sendSuccess,
-				failedUsers: sendSuccess ? [] : failedUsers
+				folderName: folder.name
 			}
 		});
 	} catch (error) {

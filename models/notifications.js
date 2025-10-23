@@ -5,13 +5,26 @@ module.exports = (sequelize, DataTypes) => {
 		"notifications",
 		{
 			title: DataTypes.STRING,
-			body: DataTypes.STRING,
-			isRead: DataTypes.BOOLEAN,
+			body: DataTypes.TEXT,
+			isRead: {
+				type: DataTypes.BOOLEAN,
+				defaultValue: false
+			},
 			type: DataTypes.STRING,
+			data: {
+				type: DataTypes.JSON,
+				defaultValue: {}
+			},
+			readAt: DataTypes.DATE,
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,
 				defaultValue: "Y"
+			},
+			isdeleted: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				defaultValue: "N"
 			}
 		},
 		{ timestamps: true }
