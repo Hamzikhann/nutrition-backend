@@ -35,7 +35,7 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 				...data
 			}
 		};
-
+		console.log(message);
 		await admin.messaging().send(message);
 
 		let createNotificationObj = {
