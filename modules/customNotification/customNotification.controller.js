@@ -3,6 +3,19 @@ const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
 const Notifications = require("../../utils/notificationsHelper");
 
+function getStatusMessage(status, sentCount, failedCount) {
+	switch (status) {
+		case "Sent":
+			return "Notification created and sent to all users successfully";
+		case "Partial":
+			return `Notification created and sent to ${sentCount} users, failed for ${failedCount} users`;
+		case "Failed":
+			return "Notification created but failed to send to any users";
+		default:
+			return "Notification created";
+	}
+}
+
 const createNotification = async (req, res) => {
 	try {
 		let { title, content, folderId } = req.body;
