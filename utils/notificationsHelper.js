@@ -51,6 +51,7 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 		console.log(`FCM notification sent to user ${userId}: ${title}`);
 		return true;
 	} catch (err) {
+		console.log(err);
 		console.error("sendFcmNotification error:", err.message);
 		return false;
 	}
