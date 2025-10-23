@@ -63,8 +63,9 @@ const createNotification = async (req, res) => {
 		const failedUsers = [];
 		for (const userId of userIds) {
 			try {
+				let encryptNotification = encryptHelper(notification);
 				const result = await Notifications.sendFcmNotification(userId, title, content, "custom", {
-					notificationId: notification.id
+					notificationId: encryptNotification.id
 				});
 				if (!result) {
 					sendSuccess = false;
