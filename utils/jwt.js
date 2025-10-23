@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const Redis = require("ioredis");
 const redis = new Redis();
+const db = require("../models");
+const Users = db.users;
 
 exports.signToken = (data, expiresIn = process.env.JWT_EXPIRES_IN) => {
 	return jwt.sign(data, process.env.JWT_SECRET, { expiresIn });
@@ -26,6 +28,24 @@ exports.protect = async (req, res, next) => {
 			});
 		}
 
+		// ✅ NEW: Check if user still exists and is active
+		const userExists = await Users.findOne({
+			where: {
+				id: decoded.userId,
+				isActive: "Y",
+				isdeleted: "N" // Add this if you have soft delete
+			},
+			attributes: ["id"] // Only need to check existence
+		});
+
+		if (!userExists) {
+			// Clear the Redis session since user no longer exists
+			await redis.del(`session:${decoded.userId}`);
+			return res.status(440).send({
+				message: "Account no longer exists. Please contact support."
+			});
+		}
+
 		// Attach user info to request
 		Object.assign(req, {
 			userId: decoded.userId,
@@ -36,6 +56,11 @@ exports.protect = async (req, res, next) => {
 
 		next();
 	} catch (err) {
+		// If JWT verification fails, clear any potential stale sessions
+		if (err.name === "JsonWebTokenError" && decoded?.userId) {
+			await redis.del(`session:${decoded.userId}`);
+		}
+
 		res.status(440).send({
 			message: err.message || "Session has expired."
 		});

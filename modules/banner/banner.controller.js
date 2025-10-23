@@ -1,12 +1,9 @@
 const db = require("../../models");
 const encryptHelper = require("../../utils/encryptHelper");
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
-const sequelize = db.sequelize; // ADD THIS LINE
 const crypto = require("../../utils/crypto");
 const Joi = require("@hapi/joi");
-const { schema } = require("@hapi/joi/lib/compile");
 const Banner = db.banners;
 
 exports.create = async (req, res) => {

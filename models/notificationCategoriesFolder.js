@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: false
 			},
-			categories: {
+			users: {
 				type: DataTypes.TEXT, // JSON string of selected categories
 				allowNull: false
 			},

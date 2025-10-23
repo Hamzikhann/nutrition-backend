@@ -1,7 +1,5 @@
-const Joi = require("joi");
 const db = require("../../models");
-const { Op, Sequelize } = require("sequelize");
-const { sequelize } = require("../../models");
+const { Op } = require("sequelize");
 
 const Users = db.users;
 const Dishes = db.dishes;

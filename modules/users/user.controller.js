@@ -6,10 +6,11 @@ const emails = require("../../utils/emails");
 const crypto = require("../../utils/crypto");
 const { sequelize } = require("../../models");
 const { Op } = require("sequelize");
-// import { uploadFileToS3 } from "../../utils/awsServises";
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 const moment = require("moment-timezone");
+const Notifications = require("../../utils/notificationsHelper");
+const Redis = require("ioredis");
+const redis = new Redis();
 
 const Users = db.users;
 const Roles = db.roles;
@@ -28,9 +29,9 @@ const Measurements = db.measurements;
 const Week = db.weeks;
 const WorkOutDayExercises = db.workoutDayExercises;
 const WorkoutsCompletions = db.workoutsCompletions;
-const UserHabits = db.userHabits;
 const Habits = db.habits;
 const HabitsCompletions = db.habitsCompletions;
+
 exports.updateStatus = async (req, res) => {
 	try {
 		const joiSchema = Joi.object({
@@ -46,8 +47,22 @@ exports.updateStatus = async (req, res) => {
 
 			const user = await Users.update({ isActive: "Y" }, { where: { id } });
 
+			// Send notification to the user after status update
+			try {
+				await Notifications.sendFcmNotification(
+					id,
+					"Account Activated",
+					"Your account has been activated successfully.",
+					"status_update",
+					{ status: "active" }
+				);
+			} catch (notificationError) {
+				console.error("Failed to send notification:", notificationError);
+				// Do not fail the status update if notification fails
+			}
+
 			return res.status(200).send({
-				message: "User status updated successfully",
+				message: "User status updated successfully and notification sent",
 				data: user
 			});
 		}
@@ -240,88 +255,6 @@ exports.getUserProgress = async (req, res) => {
 	}
 };
 
-// exports.update = async (req, res) => {
-// 	try {
-// 		const joiSchema = Joi.object({
-// 			userId: Joi.string().required(),
-// 			title: Joi.string().required(),
-// 			firstName: Joi.string().required(),
-// 			lastName: Joi.string().required(),
-// 			phoneNo: Joi.string().required(),
-// 			email: Joi.string().optional().allow("").allow(null)
-// 		});
-// 		const { error, value } = joiSchema.validate(req.body);
-
-// 		if (error) {
-// 			emails.errorEmail(req, error);
-
-// 			const message = error.details[0].message.replace(/"/g, "");
-// 			res.status(400).send({
-// 				message: message
-// 			});
-// 		} else {
-// 			const userId = crypto.decrypt(req.body.userId);
-// 			let userExists;
-
-// 			if (req.role == "Administrator") {
-// 				userExists = await Users.findOne({ where: { id: userId, isActive: "Y" } });
-// 			} else if (req.role == "User" || req.role == "Employee") {
-// 				userExists = await Users.findOne({ where: { id: userId, email: req.body.email?.trim(), isActive: "Y" } });
-// 			}
-
-// 			if (!userExists) {
-// 				res.status(401).send({
-// 					title: "User not Found!",
-// 					mesage: "User not Found."
-// 				});
-// 				return;
-// 			}
-// 			const user = {
-// 				title: req.body.title,
-// 				firstName: req.body.firstName?.trim(),
-// 				lastName: req.body.lastName?.trim(),
-// 				phoneNo: req.body.phoneNo
-// 				// email: req.body.email
-// 			};
-
-// 			var updateUser = await Users.update(user, { where: { id: userId, isActive: "Y" } });
-// 			const getUpdatedUser = await Users.findOne({
-// 				where: {
-// 					id: userId,
-// 					isActive: "Y"
-// 				},
-// 				include: [
-// 					{
-// 						model: UserProfile,
-// 						attributes: ["id", "imageUrl"]
-// 					},
-// 					{
-// 						model: Roles,
-// 						attributes: ["title"]
-// 					}
-// 				],
-// 				attributes: ["id", "title", "firstName", "lastName", "email", "roleId", "phoneNo"]
-// 			});
-// 			encryptHelper(getUpdatedUser);
-// 			if (updateUser == 1) {
-// 				res.send({
-// 					message: "User updated successfully.",
-// 					data: getUpdatedUser
-// 				});
-// 			} else {
-// 				res.status(500).send({
-// 					message: "Failed to update user."
-// 				});
-// 			}
-// 		}
-// 	} catch (err) {
-// 		emails.errorEmail(req, err);
-// 		res.status(500).send({
-// 			message: err.message || "Some error occurred."
-// 		});
-// 	}
-// };
-
 exports.updateProfile = async (req, res) => {
 	try {
 		const joiSchema = Joi.object({
@@ -433,60 +366,14 @@ exports.updateProfile = async (req, res) => {
 	}
 };
 
-// exports.updateProfileImage = async (req, res) => {
-// 	try {
-// 		const joiSchema = Joi.object({
-// 			image: Joi.any(),
-// 			userId: Joi.string().optional().allow("").allow(null)
-// 		});
-// 		const { error, value } = joiSchema.validate(req.body);
-
-// 		if (error) {
-// 			emails.errorEmail(req, error);
-
-// 			const message = error.details[0].message.replace(/"/g, "");
-// 			res.status(400).send({
-// 				message: message
-// 			});
-// 		} else {
-// 			let userId;
-
-// 			if (req.role == "Administrator") {
-// 				userId = req.body?.userId ? crypto.decrypt(req.body?.userId) : "";
-// 			} else {
-// 				userId = crypto.decrypt(req.userId);
-// 			}
-// 			let imageUrl = "uploads/users/" + req.file.filename;
-// 			var updateUser = await Users.update({ imageURL: imageUrl }, { where: { id: userId, isActive: "Y" } });
-
-// 			if (updateUser == 1) {
-// 				res.status(200).send({ message: "User Profile Image is Updated" });
-// 			} else {
-// 				res.send({
-// 					message: "Failed to update user profile image."
-// 				});
-// 			}
-// 		}
-// 	} catch (err) {
-// 		emails.errorEmail(req, err);
-// 		res.status(500).send({
-// 			message: err.message || "Some error occurred."
-// 		});
-// 	}
-// };
-
 exports.listUsers = (req, res) => {
 	try {
 		// const where = { isActive: "Y" };
 
 		Users.findAll({
-			where: {  isdeleted: "N" },
+			where: { isdeleted: "N" },
 
 			include: [
-				// {
-				// 	model: UserProfile,
-				// 	attributes: { exclude: ["isActive", "createdAt", "updatedAt"] }
-				// },
 				{
 					model: Roles,
 					where: { isActive: "Y", id: [1, 2] },
@@ -539,13 +426,13 @@ exports.listUsers = (req, res) => {
 				});
 			})
 			.catch((err) => {
-				emails.errorEmail(req, err);
+				// emails.errorEmail(req, err);
 				res.status(500).send({
 					message: err.message || "Some error occurred while retrieving Users."
 				});
 			});
 	} catch (err) {
-		emails.errorEmail(req, err);
+		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred."
 		});
@@ -577,118 +464,15 @@ exports.listEmployees = (req, res) => {
 				});
 			})
 			.catch((err) => {
-				emails.errorEmail(req, err);
+				// emails.errorEmail(req, err);
 				res.status(500).send({
 					message: err.message || "Error while retrieving employees."
 				});
 			});
 	} catch (err) {
-		emails.errorEmail(req, err);
+		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Unexpected error."
-		});
-	}
-};
-
-exports.detail = async (req, res) => {
-	try {
-		const userId = crypto.decrypt(req.body.userId);
-
-		// First get the basic user info
-		const user = await Users.findOne({
-			where: { id: userId, isActive: "Y" },
-			include: [
-				{
-					model: Roles,
-					attributes: ["title"]
-				}
-			],
-			attributes: {
-				exclude: ["isActive", "password", "updatedAt", "roleId"]
-			}
-		});
-
-		if (!user) {
-			return res.status(404).send({
-				message: "User not found"
-			});
-		}
-
-		const userPlain = user.get({ plain: true });
-
-		let result = {
-			...userPlain,
-			role: userPlain.role?.title
-		};
-
-		// For employees, get their assignment stats
-		if (userPlain.role?.title.toLowerCase() === "employee") {
-			const assignmentStatsQuery = `
-  SELECT
-    COUNT(ba.id) AS totalAssignments,
-    SUM(CASE WHEN b.status = 'Completed' THEN 1 ELSE 0 END) AS completedAssignments,
-    SUM(CASE WHEN b.status = 'Started' THEN 1 ELSE 0 END) AS activeAssignments,
-    SUM(CASE WHEN b.status = 'Inprogress' THEN 1 ELSE 0 END) AS inprogressAssignments
-  FROM bookingAssignments ba
-  INNER JOIN bookings b ON b.id = ba.bookingId
-  WHERE ba.employeeId = :userId AND ba.isActive = 'Y'
-`;
-
-			const [assignmentStats] = await sequelize.query(assignmentStatsQuery, {
-				replacements: { userId },
-				type: sequelize.QueryTypes.SELECT
-			});
-
-			result = {
-				...result,
-				totalAssignments: Number(assignmentStats.totalAssignments || 0),
-				completedAssignments: Number(assignmentStats.completedAssignments || 0),
-				activeAssignments: Number(assignmentStats.activeAssignments || 0),
-				inprogressAssignments: Number(assignmentStats.inprogressAssignments || 0),
-				performanceRating: "N/A"
-			};
-		}
-		// For regular users, get their booking stats
-		else {
-			const bookingStats = await Bookings.findAll({
-				where: {
-					userId: userId,
-					isActive: "Y"
-				},
-				attributes: [
-					[sequelize.fn("COUNT", sequelize.col("id")), "totalBookings"],
-					[
-						sequelize.fn("COUNT", sequelize.literal(`CASE WHEN status = 'Inprogress' THEN 1 ELSE 0 END`)),
-						"upcomingBookings"
-					],
-					[
-						sequelize.fn("COUNT", sequelize.literal(`CASE WHEN status = 'Completed' THEN 1 ELSE 0 END`)),
-						"completedBookings"
-					],
-					[sequelize.fn("COUNT", sequelize.literal(`CASE WHEN status = 'Started' THEN 1 ELSE 0 END`)), "activeBookings"]
-				],
-				raw: true
-			});
-
-			result = {
-				...result,
-				totalBookings: bookingStats[0]?.totalBookings || 0,
-				upcomingBookings: bookingStats[0]?.upcomingBookings || 0,
-				completedBookings: bookingStats[0]?.completedBookings || 0,
-				cancelledBookings: bookingStats[0]?.cancelledBookings || 0,
-				activeBookings: bookingStats[0]?.activeBookings || 0
-			};
-		}
-		result;
-		// encryptHelper(result);
-		res.send({
-			message: "User info retrieved successfully",
-			data: result
-		});
-	} catch (err) {
-		emails.errorEmail(req, err);
-		res.status(500).send({
-			message: err.message || "Some error occurred while retrieving user details."
 		});
 	}
 };
@@ -758,6 +542,7 @@ exports.deactivate = (req, res) => {
 
 		Users.update({ isActive: "N" }, { where: { id: userId } })
 			.then(async (num) => {
+				await redis.del(`session:${userId}`);
 				if (num == 1) {
 					res.send({
 						message: "User was deactivated successfully."
@@ -788,6 +573,7 @@ exports.delete = (req, res) => {
 
 		Users.update({ isdeleted: "Y" }, { where: { id: userId } })
 			.then(async (num) => {
+				await redis.del(`session:${userId}`);
 				if (num == 1) {
 					res.send({
 						message: "User was deleted successfully."
@@ -967,22 +753,6 @@ function convertDurationToWeeks(duration) {
 	return 0;
 }
 
-// 🧠 Helper: get correct week (Mon → Sun) range
-function getWeekRange(date, timeZone) {
-	const mDate = moment.tz(date, timeZone);
-
-	// Move to Monday start (moment uses Sunday as 0)
-	const dayOfWeek = mDate.day(); // 0 = Sunday, 1 = Monday, etc.
-	const startOfWeek = mDate.clone().subtract(dayOfWeek === 0 ? 6 : dayOfWeek - 1, "days");
-	const endOfWeek = startOfWeek.clone().add(6, "days");
-
-	return {
-		startOfWeek: startOfWeek.startOf("day").format("YYYY-MM-DD HH:mm:ss"),
-		endOfWeek: endOfWeek.endOf("day").format("YYYY-MM-DD HH:mm:ss")
-	};
-}
-
-
 // 📊 MAIN API: Weekly / Monthly Habit Progress
 exports.getHabitProgress = async (req, res) => {
 	try {
@@ -1002,7 +772,7 @@ exports.getHabitProgress = async (req, res) => {
 		const habits = await Habits.findAll({
 			where: {
 				mandatory: "true",
-				userId:1,
+				userId: 1,
 				isActive: "Y"
 			},
 			attributes: ["id", "name", "percentage"]

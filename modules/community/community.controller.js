@@ -2,7 +2,6 @@ const db = require("../../models");
 const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
 const joi = require("joi");
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 const moment = require("moment-timezone");
 const { Op } = require("sequelize");
@@ -273,14 +272,10 @@ exports.listPosts = async (req, res) => {
 			const startOfDayUTC = moment.tz(`${date} 00:00:00`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
 			const endOfDayUTC = moment.tz(`${date} 23:59:59.999`, timeZone).utc().format("YYYY-MM-DD HH:mm:ss");
 
-			console.log(`🕒 Local day (${timeZone}): ${date}`);
-			console.log(`➡️ UTC range: ${startOfDayUTC} → ${endOfDayUTC}`);
-
 			whereCondition.createdAt = {
 				[Op.between]: [startOfDayUTC, endOfDayUTC]
 			};
 		}
-		console.log(whereCondition);
 		const posts = await CommunityCategories.findAll({
 			include: [
 				{
@@ -313,14 +308,12 @@ exports.listPosts = async (req, res) => {
 					order: [["createdAt", "DESC"]]
 				}
 			]
-			// order: [["createdAt", "DESC"]]
 		});
 
 		encryptHelper(posts);
 
 		res.status(200).json({
 			message: `Posts for ${date} (${timeZone})`,
-			// rangeUTC: { start: startOfDayUTC, end: endOfDayUTC },
 			posts
 		});
 	} catch (err) {

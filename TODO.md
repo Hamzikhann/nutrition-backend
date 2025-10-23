@@ -1,0 +1,5 @@
+- [x] Add import for Notifications from ../../utils/notificationsHelper in customNotification.controller.js
+- [x] After creating the notification, parse folder.users to get userIds array
+- [x] Loop through each userId and send FCM notification using Notifications.sendFcmNotification
+- [x] Track sending results and update notification status to "Sent" or "Failed" accordingly
+- [x] Update the response to reflect the sending status

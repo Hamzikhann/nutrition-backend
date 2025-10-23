@@ -1,0 +1,4 @@
+- [ ] Add import for Notifications from ../../utils/notificationsHelper in user.controller.js
+- [ ] In updateStatus function, after updating user status, send FCM notification to the user
+- [ ] Handle notification sending errors gracefully
+- [ ] Update response message to indicate notification was sent

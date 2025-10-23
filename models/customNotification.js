@@ -12,10 +12,7 @@ module.exports = (sequelize, DataTypes) => {
 				type: DataTypes.TEXT,
 				allowNull: false
 			},
-			userIds: {
-				type: DataTypes.TEXT, // JSON string of selected user IDs
-				allowNull: false
-			},
+
 			status: {
 				type: DataTypes.STRING,
 				allowNull: false,

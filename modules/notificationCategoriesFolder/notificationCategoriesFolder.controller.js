@@ -1,20 +1,25 @@
 const db = require("../../models");
 const { Op } = require("sequelize");
-
+const encryptHelper = require("../../utils/encryptHelper");
+const crypto = require("../../utils/crypto");
 const createFolder = async (req, res) => {
 	try {
-		const { name, categories } = req.body;
+		let { name, users } = req.body;
 
-		if (!name || !categories) {
+		if (!name || !users || !Array.isArray(users)) {
 			return res.status(400).json({
 				success: false,
-				message: "Folder name and categories are required"
+				message: "Folder name and users array are required"
 			});
 		}
 
+		users.forEach((userId) => {
+			userId = crypto.decrypt(userId);
+		});
+
 		const folder = await db.notificationCategoriesFolder.create({
 			name,
-			categories: JSON.stringify(categories)
+			users: JSON.stringify(users) // Store array of user IDs as JSON string
 		});
 
 		res.status(201).json({
@@ -38,14 +43,11 @@ const getFolders = async (req, res) => {
 			order: [["createdAt", "DESC"]]
 		});
 
-		const foldersWithCategories = folders.map(folder => ({
-			...folder.toJSON(),
-			categories: JSON.parse(folder.categories)
-		}));
+		encryptHelper(folders);
 
 		res.status(200).json({
 			success: true,
-			data: foldersWithCategories
+			data: folders
 		});
 	} catch (error) {
 		console.error("Error fetching folders:", error);
@@ -137,42 +139,61 @@ const getUsersByCategories = async (req, res) => {
 	try {
 		const { categories } = req.body;
 
-		if (!categories || !Array.isArray(categories)) {
+		if (!categories) {
 			return res.status(400).json({
 				success: false,
-				message: "Categories array is required"
+				message: "Categories is required"
+			});
+		}
+
+		// Normalize categories to array format
+		let categoriesArray = [];
+		if (Array.isArray(categories)) {
+			categoriesArray = categories;
+		} else if (typeof categories === "string") {
+			categoriesArray = [categories];
+		} else {
+			return res.status(400).json({
+				success: false,
+				message: "Categories must be a string or array"
 			});
 		}
 
 		let whereConditions = {};
+		let orConditions = [];
 
-		// Build dynamic where conditions based on selected categories
-		for (const category of categories) {
-			switch (category) {
-				case "Inactive users":
-					whereConditions.isActive = "N";
-					break;
-				case "Active users":
-					whereConditions.isActive = "Y";
-					break;
-				case "Trial Users":
-					// Users with free plan
-					whereConditions = {
-						...whereConditions,
-						[Op.and]: [
-							...(whereConditions[Op.and] || []),
-							{
-								"$userPlans.plan.isFree$": "Y"
-							}
-						]
-					};
-					break;
+		// Handle mutually exclusive user status categories with OR logic
+		const statusCategories = categoriesArray.filter(
+			(cat) => cat === "Inactive users" || cat === "Active users" || cat === "Trial Users"
+		);
+
+		if (statusCategories.length > 0) {
+			const statusConditions = [];
+
+			for (const category of statusCategories) {
+				switch (category) {
+					case "Inactive users":
+						statusConditions.push({ isActive: "N" });
+						break;
+					case "Active users":
+						statusConditions.push({ isActive: "Y" });
+						break;
+					case "Trial Users":
+						statusConditions.push({
+							"$userPlans.plan.isFree$": "Y"
+						});
+						break;
+				}
+			}
+
+			if (statusConditions.length > 0) {
+				orConditions.push({ [Op.or]: statusConditions });
 			}
 		}
 
-		// Handle progress-based categories
-		const progressCategories = categories.filter(cat =>
-			cat.includes("Progress less than") || cat.includes("Progress more than")
+		// Handle progress-based categories with OR logic
+		const progressCategories = categoriesArray.filter(
+			(cat) => cat.includes("Progress less than") || cat.includes("Progress more than")
 		);
 
 		if (progressCategories.length > 0) {
@@ -190,28 +211,19 @@ const getUsersByCategories = async (req, res) => {
 
 				if (percentage) {
 					progressConditions.push({
-						[Op.and]: [
-							{ "$habits.mandatory$": "Y" },
-							{ "$habitsCompletions.status$": "Completed" }
-						]
+						[Op.and]: [{ "$habits.mandatory$": "Y" }, { "$habitsCompletions.status$": "Completed" }]
 					});
 				}
 			}
 
 			if (progressConditions.length > 0) {
-				whereConditions = {
-					...whereConditions,
-					[Op.and]: [
-						...(whereConditions[Op.and] || []),
-						{ [Op.or]: progressConditions }
-					]
-				};
+				orConditions.push({ [Op.or]: progressConditions });
 			}
 		}
 
-		// Handle habit-specific categories
-		const habitCategories = categories.filter(cat =>
-			cat === "User not doing workout" || cat === "User not posting meals"
+		// Handle habit-specific categories with OR logic
+		const habitCategories = categoriesArray.filter(
+			(cat) => cat === "User not doing workout" || cat === "User not posting meals"
 		);
 
 		if (habitCategories.length > 0) {
@@ -240,21 +252,23 @@ const getUsersByCategories = async (req, res) => {
 			}
 
 			if (habitConditions.length > 0) {
-				whereConditions = {
-					...whereConditions,
-					[Op.and]: [
-						...(whereConditions[Op.and] || []),
-						{ [Op.or]: habitConditions }
-					]
-				};
+				orConditions.push({ [Op.or]: habitConditions });
 			}
 		}
 
-		const users = await db.users.findAll({
-			where: {
-				...whereConditions,
+		// Build final where conditions
+		if (orConditions.length > 0) {
+			whereConditions = {
+				[Op.and]: [{ isdeleted: "N" }, { [Op.or]: orConditions }]
+			};
+		} else {
+			whereConditions = {
 				isdeleted: "N"
-			},
+			};
+		}
+
+		const users = await db.users.findAll({
+			where: whereConditions,
 			include: [
 				{
 					model: db.habits,
@@ -273,17 +287,20 @@ const getUsersByCategories = async (req, res) => {
 					as: "userPlans",
 					where: { isActive: "Y" },
 					required: false,
-					include: [{
-						model: db.plans,
-						as: "plan",
-						where: { isActive: "Y" },
-						required: false
-					}]
+					include: [
+						{
+							model: db.plans,
+							as: "plan",
+							where: { isActive: "Y" },
+							required: false
+						}
+					]
 				}
 			],
 			attributes: ["id", "firstName", "lastName", "email", "phoneNo", "isActive"]
 		});
 
+		encryptHelper(users);
 		res.status(200).json({
 			success: true,
 			data: users

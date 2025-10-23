@@ -537,3 +537,274 @@ exports.delete = async (req, res) => {
 		});
 	}
 };
+
+// exports.create = async (req, res) => {
+// 	const t = await sequelize.transaction();
+
+// 	try {
+// 		const schema = joi.object({
+// 			email: joi.string().required(),
+// 			phoneNo: joi.string().required(),
+// 			amount: joi.string().required(),
+// 			paymentMethod: joi.string().required(),
+// 			currency: joi.string().required(),
+// 			paymentIntentId: joi.string().required(),
+// 			planId: joi.string().required(),
+// 			userId: joi.string().required(),
+// 			isUpgrade: joi.boolean().optional().default(false) // Add this field to distinguish upgrade vs renewal
+// 		});
+
+// 		const { error } = schema.validate(req.body);
+// 		if (error) {
+// 			await t.rollback();
+// 			return res.status(400).send({ message: error.details[0].message });
+// 		}
+
+// 		const { amount, paymentMethod, currency, paymentIntentId, isUpgrade } = req.body;
+// 		console.log(req.body);
+
+// 		let userId = crypto.decrypt(req.body.userId);
+// 		console.log(userId);
+// 		if (userId == null) {
+// 			return res.status(400).send({
+// 				success: false,
+// 				message: "User not found"
+// 			});
+// 		}
+
+// 		let existedUser = await User.findOne({
+// 			where: { id: userId }
+// 		});
+
+// 		if (!existedUser) {
+// 			return res.status(400).send({
+// 				success: false,
+// 				message: "User not found"
+// 			});
+// 		}
+
+// 		const getPlans = await Plans.findOne({
+// 			where: {
+// 				id: crypto.decrypt(req.body.planId)
+// 			}
+// 		});
+
+// 		if (!getPlans) {
+// 			return res.status(400).send({
+// 				success: false,
+// 				message: "Plan not found"
+// 			});
+// 		}
+
+// 		// Check if user has an existing active plan
+// 		const existingUserPlan = await UserPlans.findOne({
+// 			where: {
+// 				userId: userId,
+// 				isActive: 'Y'
+// 			},
+// 			order: [['createdAt', 'DESC']] // Get the latest active plan
+// 		});
+
+// 		let newDuration;
+// 		let userPlanData;
+
+// 		if (existingUserPlan && !isUpgrade) {
+// 			// CASE 1: RENEWAL - Add new duration to existing duration
+// 			const currentDuration = existingUserPlan.duration;
+// 			const newPlanDuration = getPlans.duration;
+
+// 			// Calculate total duration (existing + new)
+// 			newDuration = addDurations(currentDuration, newPlanDuration);
+
+// 			// Update existing user plan with new duration
+// 			userPlanData = await UserPlans.update(
+// 				{
+// 					duration: newDuration,
+// 					planId: crypto.decrypt(req.body.planId),
+// 					updatedAt: new Date()
+// 				},
+// 				{
+// 					where: {
+// 						id: existingUserPlan.id
+// 					},
+// 					transaction: t
+// 				}
+// 			);
+
+// 		} else if (existingUserPlan && isUpgrade) {
+// 			// CASE 2: UPGRADE - Deactivate old plan and create new one
+
+// 			// Deactivate the current active plan
+// 			await UserPlans.update(
+// 				{
+// 					isActive: 'N',
+// 					deactivatedAt: new Date()
+// 				},
+// 				{
+// 					where: {
+// 						id: existingUserPlan.id,
+// 						userId: userId
+// 					},
+// 					transaction: t
+// 				}
+// 			);
+
+// 			// Create new user plan with the upgraded plan duration
+// 			newDuration = getPlans.duration;
+// 			userPlanData = await UserPlans.create(
+// 				{
+// 					userId: userId,
+// 					duration: newDuration,
+// 					planId: crypto.decrypt(req.body.planId),
+// 					isActive: 'Y',
+// 					previousPlanId: existingUserPlan.planId // Track previous plan for reference
+// 				},
+// 				{
+// 					transaction: t
+// 				}
+// 			);
+
+// 		} else {
+// 			// CASE 3: FIRST TIME PURCHASE - Create new plan
+// 			newDuration = getPlans.duration;
+// 			userPlanData = await UserPlans.create(
+// 				{
+// 					userId: userId,
+// 					duration: newDuration,
+// 					planId: crypto.decrypt(req.body.planId),
+// 					isActive: 'Y'
+// 				},
+// 				{
+// 					transaction: t
+// 				}
+// 			);
+// 		}
+
+// 		// Handle file upload if present
+// 		if (req.file) {
+// 			const file = req.file;
+// 			var fileUrl = await uploadFileToSpaces(file, "payments");
+// 		}
+
+// 		// Update user payment status
+// 		const updateUser = await User.update(
+// 			{
+// 				isPayment: "Y"
+// 			},
+// 			{
+// 				where: {
+// 					id: userId
+// 				},
+// 				transaction: t
+// 			}
+// 		);
+
+// 		// Create payment record
+// 		const payment = await Payment.create(
+// 			{
+// 				amount,
+// 				paymentMethod,
+// 				currency,
+// 				paymentIntentId,
+// 				image: fileUrl ? fileUrl : null,
+// 				userId,
+// 				planId: crypto.decrypt(req.body.planId),
+// 				isUpgrade: isUpgrade || false,
+// 				userPlanId: userPlanData.id || existingUserPlan?.id
+// 			},
+// 			{
+// 				transaction: t
+// 			}
+// 		);
+
+// 		await t.commit();
+
+// 		console.log(existedUser.id);
+// 		const getUser = await User.findOne({
+// 			where: {
+// 				id: existedUser.id
+// 			},
+// 			include: [
+// 				{
+// 					model: Roles
+// 				},
+// 				{
+// 					model: UserPlans,
+// 					where: { isActive: 'Y' },
+// 					required: false,
+// 					include: [{ model: Plans }]
+// 				}
+// 			]
+// 		});
+
+// 		encryptHelper(getUser);
+
+// 		return res.status(200).json({
+// 			success: true,
+// 			message: isUpgrade ? "Plan upgraded successfully" : "Payment & User plan processed successfully",
+// 			data: getUser
+// 		});
+// 	} catch (error) {
+// 		await t.rollback();
+// 		console.error("Error in create:", error);
+
+// 		return res.status(500).json({
+// 			success: false,
+// 			message: error.message
+// 		});
+// 	}
+// };
+
+// // Helper function to add durations (e.g., "2 months" + "2 months" = "4 months")
+// function addDurations(duration1, duration2) {
+// 	// Extract numbers and units
+// 	const match1 = duration1.match(/(\d+)\s*(\w+)/);
+// 	const match2 = duration2.match(/(\d+)\s*(\w+)/);
+
+// 	if (!match1 || !match2) {
+// 		throw new Error('Invalid duration format');
+// 	}
+
+// 	const num1 = parseInt(match1[1]);
+// 	const unit1 = match1[2].toLowerCase();
+// 	const num2 = parseInt(match2[1]);
+// 	const unit2 = match2[2].toLowerCase();
+
+// 	// Convert to common unit if needed, or assume same unit
+// 	if (unit1 !== unit2) {
+// 		// For simplicity, assume both are in the same unit for now
+// 		// You can add conversion logic here if needed
+// 		throw new Error('Duration units must be the same for addition');
+// 	}
+
+// 	const total = num1 + num2;
+// 	return `${total} ${unit1}`;
+// }
+
+// // Helper function to convert duration to weeks (for your list controller)
+// function convertDurationToWeeks(duration) {
+// 	const match = duration.match(/(\d+)\s*(\w+)/);
+// 	if (!match) {
+// 		throw new Error('Invalid duration format');
+// 	}
+
+// 	const num = parseInt(match[1]);
+// 	const unit = match[2].toLowerCase();
+
+// 	switch(unit) {
+// 		case 'week':
+// 		case 'weeks':
+// 			return num;
+// 		case 'month':
+// 		case 'months':
+// 			return num * 4; // Assuming 4 weeks per month
+// 		case 'year':
+// 		case 'years':
+// 			return num * 52; // 52 weeks per year
+// 		case 'day':
+// 		case 'days':
+// 			return Math.ceil(num / 7); // Convert days to weeks
+// 		default:
+// 			throw new Error('Unknown duration unit: ' + unit);
+// 	}
+// }

@@ -25,17 +25,38 @@ exports.create = async (req, res) => {
 	mealId = crypto.decrypt(mealId);
 	let userId = crypto.decrypt(req.userId);
 
-	let newPlan = await MealPlaner.create({
-		day,
-		categoryId,
-		mealId,
-		userId
+	let exist = await MealPlaner.findOne({
+		where: { day }
 	});
-	encryptHelper(newPlan);
-	return res.status(201).json({
-		message: "Meal plan created successfully",
-		plan: newPlan
-	});
+
+	if (exist) {
+		let updated = await MealPlaner.update(
+			{
+				categoryId,
+				mealId
+			},
+			{
+				where: { day }
+			}
+		);
+
+		return res.status(201).json({
+			message: "Meal plan updated successfully",
+			plan: updated
+		});
+	} else {
+		let newPlan = await MealPlaner.create({
+			day,
+			categoryId,
+			mealId,
+			userId
+		});
+		encryptHelper(newPlan);
+		return res.status(201).json({
+			message: "Meal plan created successfully",
+			plan: newPlan
+		});
+	}
 };
 
 exports.list = async (req, res) => {
