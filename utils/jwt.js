@@ -3,7 +3,7 @@ const Redis = require("ioredis");
 const redis = new Redis();
 const db = require("../models");
 const Users = db.users;
-
+const crypto = require("../utils/crypto");
 exports.signToken = (data, expiresIn = process.env.JWT_EXPIRES_IN) => {
 	return jwt.sign(data, process.env.JWT_SECRET, { expiresIn });
 };
@@ -28,16 +28,19 @@ exports.protect = async (req, res, next) => {
 			});
 		}
 		console.log(decoded.userId);
+
 		// ✅ NEW: Check if user still exists and is active
 		const userExists = await Users.findOne({
 			where: {
-				id: decoded.userId,
+				id: crypto.decrypt(decoded.userId),
 				isActive: "Y",
 				isdeleted: "N" // Add this if you have soft delete
 			},
 			attributes: ["id"] // Only need to check existence
 		});
 		console.log(userExists);
+		console.log(decoded.userId);
+
 		if (!userExists) {
 			// Clear the Redis session since user no longer exists
 			await redis.del(`session:${decoded.userId}`);
