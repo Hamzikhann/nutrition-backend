@@ -145,7 +145,7 @@ const getNotifications = async (req, res) => {
 			],
 			order: [["createdAt", "DESC"]]
 		});
-
+		encryptHelper(notifications);
 		res.status(200).json({
 			success: true,
 			data: notifications
