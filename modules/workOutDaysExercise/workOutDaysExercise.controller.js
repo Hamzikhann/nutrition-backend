@@ -70,7 +70,51 @@ exports.list = async (req, res) => {
 		});
 
 		if (!userPlan) {
-			return res.status(404).send({ message: "No plan found for user" });
+			let workout=await Week.findOne({
+				where:{isActive:"Y",order:0},
+					include: [
+				{
+					model: WorkoutDays,
+					include: [
+						{
+							model: WorkOutDayExercises,
+							include: [
+								{
+									model: Exercise,
+									attributes: {
+										exclude: ["createdAt", "updatedAt", "workoutDayId"]
+									}
+								}
+							],
+							attributes: {
+								exclude: ["createdAt", "updatedAt", "exerciseId", "weekId", "workoutDayId"]
+							}
+						},
+						{
+							model: WorkoutsCompletions,
+							required: false,
+							include: [
+								{
+									model: User
+								}
+							]
+						}
+					],
+					attributes: {
+						exclude: ["createdAt", "updatedAt"]
+					}
+				}
+			],
+			attributes: {
+				exclude: ["createdAt", "updatedAt", "planId"]
+			},
+			})
+			encryptHelper(workout);
+
+		return res.status(200).send({
+			message: "Work out day exercises listed successfully",
+			data: workout
+		});
 		}
 
 		// 2. Convert duration → weeks
