@@ -59,6 +59,7 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 		return true;
 	} catch (err) {
 		console.error("sendFcmNotification error:", err.message);
+		const userId = isNaN(toUserId) ? crypto.decrypt(toUserId) : toUserId;
 
 		// Handle invalid token error
 		if (err.errorInfo && err.errorInfo.code === "messaging/registration-token-not-registered") {
