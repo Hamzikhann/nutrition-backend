@@ -82,6 +82,7 @@ exports.create = async (req, res) => {
 
 		const updateUser = await User.update(
 			{
+				isActive: "N",
 				isPayment: "Y"
 			},
 			{
