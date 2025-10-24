@@ -63,7 +63,7 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 			body: body,
 			isRead: false,
 			type: type || "general",
-			data: stringData // This will store the stringified post data
+			data: JSON.stringify(data) // This will store the stringified post data
 		});
 
 		console.log(`FCM notification sent to user ${userId}: ${title}`);
