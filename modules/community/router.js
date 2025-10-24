@@ -32,6 +32,10 @@ router.post("/detail", (req, res) => {
 	communityController.detail(req, res);
 });
 
+router.post("/detail/post", (req, res) => {
+	communityController.getPostDetails(req, res);
+});
+
 router.post("/delete/post", (req, res) => {
 	communityController.deletePost(req, res);
 });

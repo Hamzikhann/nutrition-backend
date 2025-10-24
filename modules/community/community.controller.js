@@ -203,7 +203,7 @@ exports.createPost = async (req, res) => {
 				`${currentUser.firstName} ${currentUser.lastName} posted: ${title}`,
 				"community_announcement",
 				{
-					post: JSON.stringify(post.toJSON()), // Stringify the whole post
+					post: post.id, // Stringify the whole post
 					category: "Announcements"
 				}
 			);
@@ -214,7 +214,7 @@ exports.createPost = async (req, res) => {
 				`${currentUser.firstName} ${currentUser.lastName} posted in ${category.title}`,
 				"community_post",
 				{
-					post: JSON.stringify(post.toJSON()), // Stringify the whole post
+					post: post.id, // Stringify the whole post
 					category: category.title
 				}
 			);
@@ -334,7 +334,8 @@ exports.detail = async (req, res) => {
 		} else {
 			const category = await CommunityCategories.findOne({
 				where: {
-					id: crypto.decrypt(value.categoryId)
+					id: crypto.decrypt(value.categoryId),
+					isActive: "Y"
 				}
 			});
 			if (!category) {
@@ -648,6 +649,81 @@ exports.updateCategory = async (req, res) => {
 
 			return res.status(200).json({
 				message: "Category updated successfully"
+			});
+		}
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			message: "Internal server error"
+		});
+	}
+};
+
+exports.getPostDetails = async (req, res) => {
+	try {
+		const joiSchema = joi.object({
+			postId: joi.string().required()
+		});
+		const { error, value } = joiSchema.validate(req.body);
+		if (error) {
+			return res.status(400).send({
+				message: error.details[0].message
+			});
+		} else {
+			const post = await CommunityPosts.findOne({
+				where: {
+					id: crypto.decrypt(value.postId),
+					isActive: "Y"
+				},
+				include: [
+					{
+						model: CommunityLikes,
+						include: [
+							{
+								model: db.users,
+								attributes: ["id", "firstName", "lastName"],
+								include: [
+									{
+										model: db.roles,
+										attributes: ["title"]
+									}
+								]
+							}
+						]
+					},
+					{
+						model: CommunityLikesCounter,
+						attributes: ["reactionType", "count"]
+					},
+					{
+						model: User,
+						attributes: ["id", "firstName", "lastName"],
+						include: [{ model: db.roles, attributes: ["title"] }]
+					},
+					{
+						model: CommunityPostMedia,
+						required: false,
+						where: { isActive: "Y" }
+					}
+				]
+			});
+
+			if (!post) {
+				return res.status(404).json({
+					message: "Post not found"
+				});
+			}
+
+			// Add comment count manually
+			const commentsCount = await CommunityComments.count({
+				where: { communityPostId: post.id, isActive: "Y" }
+			});
+			post.setDataValue("commentsCount", commentsCount);
+
+			encryptHelper(post);
+			res.status(200).json({
+				message: "Post details retrieved successfully",
+				post
 			});
 		}
 	} catch (err) {
