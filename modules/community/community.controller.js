@@ -203,7 +203,7 @@ exports.createPost = async (req, res) => {
 				`${currentUser.firstName} ${currentUser.lastName} posted: ${title}`,
 				"community_announcement",
 				{
-					post: JSON.stringify(post),
+					post: JSON.stringify(post.toJSON()),
 					category: "Announcements"
 				}
 			);
@@ -214,7 +214,7 @@ exports.createPost = async (req, res) => {
 				`${currentUser.firstName} ${currentUser.lastName} posted in ${category.title}`,
 				"community_post",
 				{
-					post: JSON.stringify(post),
+					post: JSON.stringify(post.toJSON()),
 					category: category.title
 				}
 			);
