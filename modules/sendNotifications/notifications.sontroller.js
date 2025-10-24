@@ -16,39 +16,46 @@ exports.getUserNotifications = async (req, res) => {
 		};
 
 		if (userId != 1) {
-			// Fixed the condition - you had == !1 which is incorrect
 			whereClause.userId = userId;
 		}
 
 		const notifications = await db.notifications.findAndCountAll({
 			where: whereClause,
-			order: [["createdAt", "DESC"]],
-			include: [
-				{
-					model: db.communityPosts, // Add your communityPosts model
-					as: "post", // Use the appropriate association name
-					required: false
-				}
-			]
+			order: [["createdAt", "DESC"]]
 		});
 
-		// Process notifications to handle the post data
+		// Process notifications to extract post data from the string
 		const processedNotifications = notifications.rows.map((notification) => {
 			const notificationData = notification.toJSON();
 
-			// If post data is stored as string in data field, try to parse it
-			if (notificationData.data && notificationData.data.post) {
-				if (
-					typeof notificationData.data.post === "string" &&
-					notificationData.data.post.includes("SequelizeInstance")
-				) {
-					// If post is included via association, use that instead
-					if (notificationData.post) {
-						notificationData.data.post = notificationData.post;
+			// Extract post ID from the Sequelize instance string
+			if (notificationData.data && notificationData.data.post && typeof notificationData.data.post === "string") {
+				const postString = notificationData.data.post;
+
+				// Extract the post ID from the string format: "[object SequelizeInstance:communityPosts]"
+				// The actual post data might be embedded or you might need to extract the ID
+
+				// If you stored the actual post data, try to parse it
+				try {
+					// Try to see if there's JSON data in the string
+					const jsonMatch = postString.match(/\{.*\}/);
+					if (jsonMatch) {
+						notificationData.data.post = JSON.parse(jsonMatch[0]);
 					} else {
-						// Remove or handle the invalid post data
-						notificationData.data.post = null;
+						// If no JSON found, just store the extracted information
+						notificationData.data.post = {
+							type: "communityPost",
+							// Extract any available info from the string
+							originalString: postString
+						};
 					}
+				} catch (error) {
+					// If parsing fails, create a clean structure
+					notificationData.data.post = {
+						type: "communityPost",
+						category: notificationData.data.category
+						// You might need to fetch the actual post data separately if needed
+					};
 				}
 			}
 
