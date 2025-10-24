@@ -25,10 +25,20 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 			return false;
 		}
 
-		// Convert all data values to strings
+		// Convert all data values to strings - handle objects by stringifying them
 		const stringData = {};
 		Object.keys(data).forEach((key) => {
-			stringData[key] = String(data[key]);
+			const value = data[key];
+
+			if (value === null || value === undefined) {
+				stringData[key] = "";
+			} else if (typeof value === "object" || Array.isArray(value)) {
+				// Stringify objects and arrays
+				stringData[key] = JSON.stringify(value);
+			} else {
+				// Convert other types to string
+				stringData[key] = String(value);
+			}
 		});
 
 		const message = {
@@ -45,14 +55,14 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 
 		await admin.messaging().send(message);
 
-		// Save to individual notifications table
+		// Save to individual notifications table - store the stringified data
 		await db.notifications.create({
 			userId: userId,
 			title: title,
 			body: body,
 			isRead: false,
 			type: type || "general",
-			data: stringData
+			data: stringData // This will store the stringified post data
 		});
 
 		console.log(`FCM notification sent to user ${userId}: ${title}`);
