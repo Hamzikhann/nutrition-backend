@@ -27,7 +27,7 @@ const howToUseRouteHandler = require("../modules/howToUse/router");
 const userAssesmentProgressRouteHandler = require("../modules/userAssesmentProgress/router");
 const customNotificationRouteHandler = require("../modules/customNotification/router");
 const notificationCategoriesFolderRouteHandler = require("../modules/notificationCategoriesFolder/router");
-
+const notificationRouteHandler = require("../modules/sendNotifications/router");
 class Routes {
 	constructor(app) {
 		this.app = app;
@@ -59,6 +59,7 @@ class Routes {
 		this.app.use("/api/userAssesmentProgress", jwt.protect, userAssesmentProgressRouteHandler);
 		this.app.use("/api/customNotification", jwt.protect, customNotificationRouteHandler);
 		this.app.use("/api/notificationCategoriesFolder", jwt.protect, notificationCategoriesFolderRouteHandler);
+		this.app.use("/api/notification", jwt.protect, notificationRouteHandler);
 	}
 	routesConfig() {
 		this.appRoutes();
