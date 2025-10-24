@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
 			},
 			type: DataTypes.STRING,
 			data: {
-				type: DataTypes.JSON,
+				type: DataTypes.TEXT,
 				defaultValue: {}
 			},
 			readAt: DataTypes.DATE,

@@ -49,7 +49,7 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 		await db.notifications.create({
 			userId: userId,
 			title: title,
-			body: body,
+			body: JSON.stringify(body),
 			isRead: false,
 			type: type || "general",
 			data: stringData
