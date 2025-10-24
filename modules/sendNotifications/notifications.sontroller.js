@@ -11,11 +11,13 @@ const Booking = db.bookings;
 exports.getUserNotifications = async (req, res) => {
 	try {
 		const userId = crypto.decrypt(req.userId); // From auth middleware
-
 		const whereClause = {
-			userId,
 			isdeleted: "N"
 		};
+
+		if (userId == !1) {
+			whereClause.userId = userId;
+		}
 
 		const notifications = await db.notifications.findAndCountAll({
 			where: whereClause,
