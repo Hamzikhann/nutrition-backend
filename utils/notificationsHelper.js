@@ -49,7 +49,7 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 			},
 			data: {
 				type: type || "general",
-				data
+				data: JSON.stringify(data)
 			}
 		};
 		console.log(message);
