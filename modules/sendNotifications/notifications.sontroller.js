@@ -10,25 +10,56 @@ const Booking = db.bookings;
 
 exports.getUserNotifications = async (req, res) => {
 	try {
-		const userId = crypto.decrypt(req.userId); // From auth middleware
+		const userId = crypto.decrypt(req.userId);
 		const whereClause = {
 			isdeleted: "N"
 		};
 
-		if (userId == !1) {
+		if (userId != 1) {
+			// Fixed the condition - you had == !1 which is incorrect
 			whereClause.userId = userId;
 		}
 
 		const notifications = await db.notifications.findAndCountAll({
 			where: whereClause,
-			order: [["createdAt", "DESC"]]
+			order: [["createdAt", "DESC"]],
+			include: [
+				{
+					model: db.communityPosts, // Add your communityPosts model
+					as: "post", // Use the appropriate association name
+					required: false
+				}
+			]
 		});
 
-		encryptHelper(notifications.rows);
+		// Process notifications to handle the post data
+		const processedNotifications = notifications.rows.map((notification) => {
+			const notificationData = notification.toJSON();
+
+			// If post data is stored as string in data field, try to parse it
+			if (notificationData.data && notificationData.data.post) {
+				if (
+					typeof notificationData.data.post === "string" &&
+					notificationData.data.post.includes("SequelizeInstance")
+				) {
+					// If post is included via association, use that instead
+					if (notificationData.post) {
+						notificationData.data.post = notificationData.post;
+					} else {
+						// Remove or handle the invalid post data
+						notificationData.data.post = null;
+					}
+				}
+			}
+
+			return notificationData;
+		});
+
+		encryptHelper(processedNotifications);
 		res.status(200).json({
 			success: true,
 			data: {
-				notifications: notifications.rows,
+				notifications: processedNotifications,
 				totalCount: notifications.count
 			}
 		});
