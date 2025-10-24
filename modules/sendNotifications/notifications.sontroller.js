@@ -66,7 +66,7 @@ exports.getUserNotifications = async (req, res) => {
 		res.status(200).json({
 			success: true,
 			data: {
-				notifications: processedNotifications,
+				notifications: notifications,
 				totalCount: notifications.count
 			}
 		});
