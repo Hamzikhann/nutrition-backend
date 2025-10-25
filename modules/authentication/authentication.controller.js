@@ -29,7 +29,8 @@ exports.login = async (req, res) => {
 		const userExist = await Users.findOne({
 			where: {
 				id: decryptedUserId,
-				isActive: "Y"
+				isActive: "Y",
+				isDeleted: "N"
 			},
 			raw: true
 		});
@@ -44,7 +45,8 @@ exports.login = async (req, res) => {
 		const user = await Users.findOne({
 			where: {
 				id: decryptedUserId,
-				isActive: "Y"
+				isActive: "Y",
+				isDeleted: "N"
 			},
 			include: [
 				{
@@ -334,17 +336,17 @@ exports.sendOtp = async (req, res) => {
 		} else {
 			var email = req.body?.email;
 			var phoneNo = req.body?.phoneNo;
-			// const otp = generateOTP();
-			const otp = "0000";
+			const otp = generateOTP();
+			// const otp = "0000";
 
 			let createOtp = await Otp.create({
 				otp: otp
 			});
 
-			// if (email) emails.sendVerificationEmail(email, otp);
+			if (email) emails.sendVerificationEmail(email, otp);
 			// else if (phoneNo) sms.sendOtpSms(otp, phoneNo);
 
-			res.status(200).send({ message: "Verification code send to user.", data: { otp: otp } });
+			res.status(200).send({ message: "Verification code send to user." });
 		}
 	} catch (err) {
 		emails.errorEmail(req, err);
@@ -405,8 +407,12 @@ exports.verifyOtp = async (req, res) => {
 			});
 		}
 
-		const userByEmail = email ? await Users.findOne({ where: { email }, include: [{ model: Roles }] }) : null;
-		const userByPhone = phoneNo ? await Users.findOne({ where: { phoneNo }, include: [{ model: Roles }] }) : null;
+		const userByEmail = email
+			? await Users.findOne({ where: { email, isDeleted: "N" }, include: [{ model: Roles }] })
+			: null;
+		const userByPhone = phoneNo
+			? await Users.findOne({ where: { phoneNo, isDeleted: "N" }, include: [{ model: Roles }] })
+			: null;
 
 		// 🧩 Case 1: both exist but different users → mismatch
 		if (userByEmail && userByPhone && userByEmail.id !== userByPhone.id) {
@@ -441,7 +447,7 @@ exports.verifyOtp = async (req, res) => {
 			});
 
 			const getUser = await Users.findOne({
-				where: { id: createdUser.id },
+				where: { id: createdUser.id, isDeleted: "N" },
 				include: [{ model: Roles }]
 			});
 

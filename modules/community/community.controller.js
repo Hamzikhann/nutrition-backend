@@ -196,29 +196,29 @@ exports.createPost = async (req, res) => {
 			attributes: ["firstName", "lastName"]
 		});
 
-		if (category.title === "Announcements") {
-			// Send to all users for announcements
-			await sendNotificationToAllUsers(
-				"New Announcement",
-				`${currentUser.firstName} ${currentUser.lastName} posted: ${title}`,
-				"community_announcement",
-				{
-					post: post.id, // Stringify the whole post
-					category: "Announcements"
-				}
-			);
-		} else {
-			// Send to all users for regular posts
-			await sendNotificationToAllUsers(
-				"New Community Post",
-				`${currentUser.firstName} ${currentUser.lastName} posted in ${category.title}`,
-				"community_post",
-				{
-					post: post.id, // Stringify the whole post
-					category: category.title
-				}
-			);
-		}
+		// if (category.title === "Announcements" && req.role === "Administrator") {
+		// 	// Send to all users for announcements
+		// 	await sendNotificationToAllUsers(
+		// 		"New Announcement",
+		// 		`${currentUser.firstName} ${currentUser.lastName} posted: ${title}`,
+		// 		"community_announcement",
+		// 		{
+		// 			post: post.id, // Stringify the whole post
+		// 			category: "Announcements"
+		// 		}
+		// 	);
+		// } else if (req.role == "Administrator") {
+		// 	// Send to all users for regular posts
+		// 	await sendNotificationToAllUsers(
+		// 		"New Community Post",
+		// 		`${currentUser.firstName} ${currentUser.lastName} posted in ${category.title}`,
+		// 		"community_post",
+		// 		{
+		// 			post: post.id, // Stringify the whole post
+		// 			category: category.title
+		// 		}
+		// 	);
+		// }
 
 		encryptHelper(post);
 		res.status(200).json({

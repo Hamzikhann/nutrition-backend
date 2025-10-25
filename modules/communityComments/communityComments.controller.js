@@ -4,7 +4,6 @@ const redis = new Redis();
 const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
-const deepenclone = require("../../utils/deepencryptedIds");
 // TTL for cache in seconds
 const Notifications = require("../../utils/notificationsHelper");
 
@@ -12,8 +11,20 @@ const Notifications = require("../../utils/notificationsHelper");
 const CACHE_TTL = 60;
 
 // Helper function to send comment notifications
-const sendCommentNotification = async (postId, commenterId, commentText, action = "added") => {
+const sendCommentNotification = async (postId, commenterId, commentText, action = "added", commenterRole = null) => {
 	try {
+		// Check if commenter is admin/subadmin - ONLY then send notifications
+		const isAdminUser = commenterRole === "Administrator" || commenterRole === "SubAdmin";
+
+		// If commenter is NOT admin/subadmin, don't send any notifications
+		if (!isAdminUser) {
+			console.log(`Regular user comment - no notifications sent for post ${postId}`);
+			return;
+		}
+
+		// Only proceed if commenter is admin/subadmin
+		console.log(`Admin/SubAdmin comment - sending notification to post owner for post ${postId}`);
+
 		// Get post details and owner
 		const post = await communityPosts.findOne({
 			where: { id: postId },
@@ -39,51 +50,25 @@ const sendCommentNotification = async (postId, commenterId, commentText, action 
 		const actionText = action === "added" ? "commented on" : "updated comment on";
 		const notificationType = action === "added" ? "community_comment" : "community_comment_updated";
 
-		// Send notification to post owner (if not the commenter themselves)
+		// Send notification to post owner ONLY (if not the commenter themselves)
 		if (post.user.id !== commenterId) {
 			await Notifications.sendFcmNotification(
 				post.user.id,
-				"New Comment on Your Post",
-				`${commenter.firstName} ${commenter.lastName} ${actionText} your post: "${post.title}"`,
+				"Admin Comment on Your Post",
+				`${commenter.firstName} ${commenter.lastName} (Admin) ${actionText} your post: "${post.title}"`,
 				notificationType,
 				{
 					postId: postId.toString(),
 					commenterId: commenterId.toString(),
-					preview: commentText.substring(0, 100) // First 100 chars as preview
+					preview: commentText.substring(0, 100),
+					isAdminComment: true
 				}
 			);
+			console.log(`Notification sent to post owner ${post.user.id} for admin comment`);
 		}
 
-		// For new comments, also notify other commenters on the same post
-		if (action === "added") {
-			const otherCommenters = await communityComments.findAll({
-				where: {
-					communityPostId: postId,
-					userId: {
-						[require("sequelize").Op.not]: [commenterId, post.userId] // Exclude commenter and post owner
-					},
-					isActive: "Y"
-				},
-				attributes: ["userId"],
-				group: ["userId"],
-				raw: true
-			});
-
-			const notificationPromises = otherCommenters.map((commenter) =>
-				Notifications.sendFcmNotification(
-					commenter.userId,
-					"New Comment on Post",
-					`${commenter.firstName} ${commenter.lastName} also commented on: "${post.title}"`,
-					"community_comment_activity",
-					{
-						postId: postId.toString(),
-						commenterId: commenterId.toString()
-					}
-				)
-			);
-
-			await Promise.allSettled(notificationPromises);
-		}
+		// DO NOT notify other commenters - even for admin comments
+		// Only post owner gets notified about admin comments
 	} catch (error) {
 		console.error("Error sending comment notification:", error);
 	}
@@ -104,7 +89,7 @@ exports.addComment = async (req, res) => {
 	let userId = crypto.decrypt(req.userId);
 	postId = crypto.decrypt(postId);
 	try {
-		let getPost = communityPosts.findOne({ where: { id: postId }, attributes: ["id", "access"] });
+		let getPost = await communityPosts.findOne({ where: { id: postId }, attributes: ["id", "access", "userId"] });
 
 		if (getPost.access == "false" && req.role != "Administrator") {
 			return res.status(400).json({ message: "You don't have permission to comment on this post" });
@@ -124,7 +109,9 @@ exports.addComment = async (req, res) => {
 		await redis.del(`comments:${postId}`);
 
 		encryptHelper(newComment);
-		await sendCommentNotification(postId, userId, comment, "added");
+
+		// Pass the role to the notification function
+		await sendCommentNotification(postId, userId, comment, "added", req.role);
 
 		return res.status(201).json({
 			message: "Comment added successfully",

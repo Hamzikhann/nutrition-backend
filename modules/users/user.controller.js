@@ -943,3 +943,23 @@ exports.updateBmr = async (req, res) => {
 		});
 	}
 };
+
+exports.details = async (req, res) => {
+	try {
+		const schema = Joi.object({ id: Joi.string().required() });
+		const { error, value } = schema.validate(req.body);
+		if (error) {
+			return res.status(400).send({ message: error.details[0].message });
+		}
+		const id = crypto.decrypt(req.body.id);
+		const user = await Users.findOne({ where: { id }, include: [{ model: UserProfile }] });
+		if (!user) {
+			return res.status(404).send({ message: "User not found" });
+		}
+		encryptHelper(user);
+		return res.status(200).send({ message: "User details retrieved successfully", data: user });
+	} catch (err) {
+		// emails.errorEmail(req, err);
+		res.status(500).send({ message: err.message || "Some error occurred" });
+	}
+};

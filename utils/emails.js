@@ -90,7 +90,7 @@ Email.sendVerificationEmail = async (email, otp) => {
 		// text = text.replace("[TEXT_LINK]", link);
 		console.log(emailFrom);
 		var mailOptions = {
-			from: `Park Pilot <${emailFrom}>`,
+			from: `Fit Cysters <${emailFrom}>`,
 			to: email,
 			subject: "Verify Email",
 			html: text
