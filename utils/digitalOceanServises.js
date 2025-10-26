@@ -23,7 +23,6 @@ const s3 = new AWS.S3({
 // Upload function
 const uploadFileToSpaces = async (file, folder = "uploads") => {
 	try {
-		console.log(file);
 		const fileExt = path.extname(file.originalname);
 		const nameWithoutExt = path.parse(file.originalname).name;
 
@@ -38,7 +37,6 @@ const uploadFileToSpaces = async (file, folder = "uploads") => {
 		};
 
 		const uploadResult = await s3.upload(params).promise();
-		console.log(uploadResult);
 		return uploadResult.Key; // Returns full public URL
 	} catch (error) {
 		console.error("Spaces Upload Error:", error);

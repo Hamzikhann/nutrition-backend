@@ -2,9 +2,6 @@ const db = require("../../models");
 const Joi = require("joi");
 const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
-const { uploadFileToS3 } = require("../../utils/awsServises");
-const { description } = require("@hapi/joi/lib/base");
-const { eachQuarterOfInterval } = require("date-fns");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Supplements = db.supplements;
@@ -50,38 +47,11 @@ exports.create = async (req, res) => {
 			return res.send({ message: "Some error" });
 		}
 	} catch (err) {
-		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while reassigning the booking."
 		});
 	}
 };
-
-// exports.list = async (req, res) => {
-// 	try {
-// 		SupplementsCategories.findAll({
-// 			include: [
-// 				{
-// 					model: Supplements
-// 				}
-// 			]
-// 		})
-// 			.then((response) => {
-// 				encryptHelper(response);
-// 				res.status(200).send({ message: "Supplements List", data: response });
-// 			})
-// 			.catch((err) => {
-// 				res.status(500).send({
-// 					message: err.message || "Some error occurred while reassigning the booking."
-// 				});
-// 			});
-// 	} catch (err) {
-// 		// emails.errorEmail(req, err);
-// 		res.status(500).send({
-// 			message: err.message || "Some error occurred while reassigning the booking."
-// 		});
-// 	}
-// };
 
 exports.list = async (req, res) => {
 	try {
@@ -94,7 +64,6 @@ exports.list = async (req, res) => {
 			// 1️⃣ Get assigned categories for this user
 			const assignedCategories = await AssignedSupplements.findAll({
 				where: { userId: userId, isActive: "Y" }
-				// attributes: ["categoryId"]
 			});
 
 			// 2️⃣ Extract category IDs into array
@@ -148,7 +117,6 @@ exports.createCategory = async (req, res) => {
 
 		res.status(200).send({ message: "Category Added", data: createCategory });
 	} catch (err) {
-		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while reassigning the booking."
 		});
@@ -211,7 +179,6 @@ exports.assignSupplementToCategory = async (req, res) => {
 			assignedCategories: decryptedIds
 		});
 	} catch (err) {
-		console.error("Error in assignSupplementToCategory:", err);
 		res.status(500).send({
 			message: err.message || "An error occurred while updating supplement assignments."
 		});
@@ -254,7 +221,6 @@ exports.update = async (req, res) => {
 
 		res.status(200).send({ message: "Supplement updated" });
 	} catch (err) {
-		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while reassigning the booking."
 		});
@@ -270,7 +236,6 @@ exports.delete = async (req, res) => {
 			message: "Supplement deleted successfully"
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Something went wrong"
 		});

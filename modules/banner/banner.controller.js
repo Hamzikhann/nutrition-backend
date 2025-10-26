@@ -11,7 +11,6 @@ exports.create = async (req, res) => {
 		const schema = Joi.object({
 			link: Joi.string().required()
 		});
-		console.log(req.body);
 		const { error } = schema.validate(req.body);
 		if (error) {
 			return res.status(400).send({ message: error.details[0].message });

@@ -212,16 +212,13 @@ exports.getUserProgress = async (req, res) => {
 
 		// const planId = userPlan.planId;
 		const durationWeeks = convertDurationToWeeks(userPlan.duration);
-		console.log(durationWeeks);
 		// Get weeks for the plan
 		const weeks = await Week.findAll({
 			where: {
 				order: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
 			}
 		});
-		console.log(weeks.length);
 		const weekIds = weeks.map((w) => w.id);
-		console.log(weekIds);
 		// Total workouts: count exercises in those weeks
 		const totalWorkouts = await WorkOutDayExercises.count({ where: { weekId: weekIds } });
 

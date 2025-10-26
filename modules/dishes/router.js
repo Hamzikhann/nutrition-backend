@@ -50,7 +50,6 @@ router.post("/list/category", async (req, res) => {
 
 router.post("/update", upload.single("image"), async (req, res) => {
 	if (req.role == "Administrator" || req.role == "Subadmin") {
-		console.log(req.body);
 		await dishesController.update(req, res);
 	} else {
 		return res.status(400).send({

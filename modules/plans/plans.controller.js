@@ -126,7 +126,6 @@ exports.delete = async (req, res) => {
 			message: "Plan deleted successfully"
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Something went wrong"
 		});

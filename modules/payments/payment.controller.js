@@ -1,7 +1,6 @@
 const db = require("../../models");
 const joi = require("joi");
 const encryptHelper = require("../../utils/encryptHelper");
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const sequelize = db.sequelize; // ADD THIS LINE
 const crypto = require("../../utils/crypto");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
@@ -34,17 +33,9 @@ exports.create = async (req, res) => {
 		}
 
 		const { amount, paymentMethod, currency, paymentIntentId } = req.body;
-		console.log(req.body);
-		// if (!req.file) {
-		// 	await t.rollback();
-		// 	return res.status(400).send({
-		// 		success: false,
-		// 		message: "Image is required"
-		// 	});
-		// }
 
 		let userId = crypto.decrypt(req.body.userId); //req.userId
-		console.log(userId);
+
 		if (userId == null) {
 			return res.status(400).send({
 				success: false,
@@ -120,7 +111,6 @@ exports.create = async (req, res) => {
 		);
 
 		await t.commit();
-		console.log(existedUser.id);
 		const getUser = await User.findOne({
 			where: {
 				id: existedUser.id

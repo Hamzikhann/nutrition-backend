@@ -51,8 +51,6 @@ exports.create = async (req, res) => {
 			purpose: joi.string().optional().allow("").allow(null),
 			pcosDuration: joi.string().optional().allow("").allow(null),
 			pcosSymptoms: joi.string().optional().allow("").allow(null),
-			// medicalHistory: joi.string().optional(),
-			// lastPeriods: joi.string().optional(),
 			medicalConditions: joi.string().optional().allow("").allow(null),
 			medicines: joi.string().optional().allow("").allow(null),
 			ultrasoundHormonalTests: joi.string().optional().allow("").allow(null),
@@ -66,13 +64,10 @@ exports.create = async (req, res) => {
 			working: joi.string().optional().allow("").allow(null),
 			meals: joi.string().optional().allow("").allow(null)
 		});
-		console.log(req.body);
 		const { error } = schema.validate(req.body);
 		if (error) {
-			console.log(error);
 			return res.status(400).send({ message: error.details[0].message });
 		}
-		console.log(req.body);
 		const userId = crypto.decrypt(req.body.userId);
 		// Create form payload
 		const formPayload = {
@@ -98,7 +93,6 @@ exports.create = async (req, res) => {
 			dinnerOptions: req.body.dinnerOptions ? req.body.dinnerOptions : "",
 			snacksOptions: req.body.snacksOptions ? req.body.snacksOptions : "",
 			meals: req.body.meals ? req.body.meals : "",
-
 			userId
 		};
 
@@ -221,17 +215,22 @@ exports.updateFiles = async (req, res) => {
 			id: joi.number().required()
 		});
 		const { error } = schema.validate(req.body);
+
 		if (error) {
 			return res.status(400).send({ message: error.details[0].message });
 		}
 		const { id } = req.body;
 		const userAssessmentFormData = await UserAssesmentForm.findByPk(id);
+
 		if (!userAssessmentFormData) {
 			return res.status(404).send({ message: "User Assessment Form not found" });
 		}
+
 		await userAssessmentFormData.update(req.body, { transaction: t });
 		await t.commit();
+
 		encryptHelper(userAssessmentFormData);
+
 		return res.status(200).send({
 			message: "User Assessment Form Updated Successfully",
 			data: userAssessmentFormData

@@ -2,7 +2,6 @@ const db = require("../../models");
 const encryptHelper = require("../../utils/encryptHelper");
 const Joi = require("joi");
 const crypto = require("../../utils/crypto");
-const { CatalogItem } = require("twilio/lib/rest/content/v1/content");
 
 const PaymentTypes = db.paymentTypes;
 const PaymentTypesCategories = db.paymentTypesCategories;
@@ -56,7 +55,6 @@ exports.create = async (req, res) => {
 			data: createpaymentType
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while creating the payment type."
 		});
@@ -257,7 +255,6 @@ exports.update = async (req, res) => {
 			data: updatedPaymentType
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while updating the payment type."
 		});
@@ -298,7 +295,6 @@ exports.delete = async (req, res) => {
 			message: "Payment type deleted successfully"
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while deleting the payment type."
 		});

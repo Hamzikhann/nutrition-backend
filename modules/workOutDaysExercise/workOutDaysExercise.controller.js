@@ -72,11 +72,9 @@ exports.list = async (req, res) => {
 		if (!userPlan) {
 			// If no plan, default to 3 months (approximately 13 weeks)
 			durationWeeks = 13; // 3 months ≈ 13 weeks
-			console.log("No user plan found, defaulting to 3 months (13 weeks)");
 		} else {
 			// 2. Convert duration → weeks for users with plans
 			durationWeeks = convertDurationToWeeks(userPlan.duration);
-			console.log(`User plan found: ${userPlan.duration} -> ${durationWeeks} weeks`);
 		}
 
 		// 3. Fetch workouts limited to duration
@@ -126,7 +124,6 @@ exports.list = async (req, res) => {
 
 		// If no workouts found for the calculated duration, fallback to default 3 months
 		if (!workout || workout.length === 0) {
-			console.log("No workouts found for calculated duration, falling back to 13 weeks");
 			workout = await Week.findAll({
 				where: {
 					order: { [db.Sequelize.Op.lte]: 13 }
@@ -359,8 +356,6 @@ exports.updateStatus = async (req, res) => {
 			});
 		} else {
 			const { id } = value;
-			console.log("user id", crypto.decrypt(req.userId));
-			console.log("workout day id", crypto.decrypt(id));
 
 			const workOutDay = await WorkoutDays.findOne({
 				where: {
@@ -368,8 +363,6 @@ exports.updateStatus = async (req, res) => {
 				}
 			});
 			if (!workOutDay) {
-				console.log("not done");
-
 				return res.status(400).send({
 					message: "Work out day exercise not found"
 				});
@@ -381,8 +374,6 @@ exports.updateStatus = async (req, res) => {
 			});
 
 			if (findWorkoutCompleted) {
-				console.log("already");
-
 				return res.status(400).send({
 					message: "Work out day already completed"
 				});
@@ -392,13 +383,11 @@ exports.updateStatus = async (req, res) => {
 				userId: crypto.decrypt(req.userId), //req.userId
 				workoutDayId: crypto.decrypt(id)
 			});
-			console.log(updateWorkoutCompleted);
 			return res.status(200).send({
 				message: "Work out day exercise updated successfully"
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		return res.status(400).send({
 			message: err.message || "Some error occurred while updating the work out day exercise."
 		});

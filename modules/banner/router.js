@@ -8,7 +8,6 @@ router.post(
 	upload.single("image"),
 
 	(req, res) => {
-		console.log(req.file);
 		if (req.role == "Administrator" || req.role == "Subadmin") {
 			bannerController.create(req, res);
 		} else {

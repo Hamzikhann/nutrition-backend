@@ -1,6 +1,5 @@
 const db = require("../../models");
 const encryptHelper = require("../../utils/encryptHelper");
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 const crypto = require("../../utils/crypto");
 const joi = require("joi");
@@ -48,7 +47,6 @@ exports.create = async (req, res) => {
 			howToUse
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Something went wrong"
 		});
@@ -72,7 +70,6 @@ exports.list = async (req, res) => {
 			howToUse
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Something went wrong"
 		});
@@ -104,13 +101,11 @@ exports.update = async (req, res) => {
 			let media = await uploadFileToSpaces(req.file, "howToUse");
 			updateObje.media = media;
 		}
-		console.log(updateObje);
 		await HowToUse.update(updateObje, { where: { id: crypto.decrypt(id) } });
 		return res.status(200).json({
 			message: "How To Use updated successfully"
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Something went wrong"
 		});
@@ -125,7 +120,6 @@ exports.delete = async (req, res) => {
 			message: "How To Use deleted successfully"
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Something went wrong"
 		});
@@ -153,7 +147,6 @@ exports.createCategory = async (req, res) => {
 			howToUseCategory
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Something went wrong"
 		});

@@ -26,7 +26,6 @@ const sendNotificationToAllUsers = async (title, body, type, data = {}) => {
 			},
 			attributes: ["id"]
 		});
-		console.log(activeUsers);
 		const notificationPromises = activeUsers.map((user) =>
 			Notifications.sendFcmNotification(user.id, title, body, type, data)
 		);
@@ -103,7 +102,6 @@ exports.createCategory = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -226,11 +224,9 @@ exports.createPost = async (req, res) => {
 			post
 		});
 	} catch (err) {
-		console.log(err);
 		// Rollback transaction if it exists
 		if (transaction) await transaction.rollback();
 
-		console.log("Error in createPost:", err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -246,7 +242,6 @@ exports.listCategories = async (req, res) => {
 			categories
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -394,7 +389,6 @@ exports.detail = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -439,7 +433,6 @@ exports.deletePost = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -490,28 +483,22 @@ exports.updatePost = async (req, res) => {
 			access: value.access
 		};
 
-		console.log("Received imagesToRemove:", value.imagesToRemove);
-
 		// Handle image removal
 		if (value.imagesToRemove && value.imagesToRemove.trim() !== "") {
 			try {
 				const imagesToRemove = JSON.parse(value.imagesToRemove);
-				console.log("Parsed imagesToRemove:", imagesToRemove);
 
 				if (Array.isArray(imagesToRemove) && imagesToRemove.length > 0) {
 					// Remove duplicates (you had duplicate IDs in your payload)
 					const uniqueImagesToRemove = [...new Set(imagesToRemove)];
-					console.log("Unique images to remove:", uniqueImagesToRemove);
 
 					// Remove old main image if it's in the removal list
 					if (uniqueImagesToRemove.includes("old-main-image")) {
-						console.log("Removing old main image");
 						updateObj.image = null; // Clear the old image field
 					}
 
 					// Remove images from CommunityPostMedia table
 					const mediaIdsToRemove = uniqueImagesToRemove.filter((id) => id !== "old-main-image");
-					console.log("Media IDs to remove:", mediaIdsToRemove);
 
 					if (mediaIdsToRemove.length > 0) {
 						// Decrypt the media IDs if they're encrypted
@@ -526,8 +513,6 @@ exports.updatePost = async (req, res) => {
 							})
 							.filter((id) => id !== null);
 
-						console.log("Decrypted media IDs to remove:", decryptedMediaIds);
-
 						if (decryptedMediaIds.length > 0) {
 							await CommunityPostMedia.update(
 								{ isActive: "N" },
@@ -539,7 +524,6 @@ exports.updatePost = async (req, res) => {
 									transaction
 								}
 							);
-							console.log(`Soft deleted ${decryptedMediaIds.length} media records`);
 						}
 					}
 				}
@@ -553,7 +537,6 @@ exports.updatePost = async (req, res) => {
 
 		// Handle new file uploads - FIX: use req.files instead of req.file
 		if (req.files && req.files.length > 0) {
-			console.log(`Processing ${req.files.length} new files`);
 			for (let i = 0; i < req.files.length; i++) {
 				try {
 					const mediaUrl = await uploadFileToSpaces(req.files[i], "communityPosts");
@@ -562,15 +545,12 @@ exports.updatePost = async (req, res) => {
 						media: mediaUrl
 					};
 					mediaObj.push(obj);
-					console.log(`Uploaded file ${i + 1}: ${mediaUrl}`);
 				} catch (uploadError) {
 					console.log(`Error uploading file ${i + 1}:`, uploadError);
 					// Continue with other files if one fails
 				}
 			}
 		}
-
-		console.log("Update object:", updateObj);
 
 		// Update post
 		const [updatedCount] = await CommunityPosts.update(updateObj, {
@@ -579,12 +559,10 @@ exports.updatePost = async (req, res) => {
 			},
 			transaction
 		});
-		console.log(`Updated ${updatedCount} post record(s)`);
 
 		// Add new media
 		if (mediaObj.length > 0) {
 			const createdMedia = await CommunityPostMedia.bulkCreate(mediaObj, { transaction });
-			console.log(`Created ${createdMedia.length} new media records`);
 		}
 
 		// Commit transaction
@@ -652,7 +630,6 @@ exports.updateCategory = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -727,7 +704,6 @@ exports.getPostDetails = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Internal server error"
 		});
@@ -769,7 +745,6 @@ exports.deleteCategory = async (req, res) => {
 			return res.status(201).send({ message: "Group Deleted" });
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).json({
 			message: "Internal server error"
 		});

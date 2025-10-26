@@ -52,8 +52,6 @@ Notifications.sendFcmNotification = async (toUserId, title, body, type, data = {
 				data: JSON.stringify(data)
 			}
 		};
-		console.log(message);
-		console.log(message.data);
 		await admin.messaging().send(message);
 
 		// Save to individual notifications table - store the stringified data

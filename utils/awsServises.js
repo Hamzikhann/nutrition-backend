@@ -20,9 +20,7 @@ const s3 = new AWS.S3({
 
 const uploadFileToS3 = async (file, folder = "uploads") => {
 	try {
-		console.log(file);
 		const fileExt = path.extname(file.originalname);
-		console.log(fileExt);
 
 		const key = `${folder}/${Date.now()}${fileExt}`;
 

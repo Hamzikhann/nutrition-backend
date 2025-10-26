@@ -94,7 +94,7 @@ exports.list = async (req, res) => {
 					]
 				}
 			],
-where: { isActive: "Y" },
+			where: { isActive: "Y" },
 			attributes: {
 				exclude: ["isActive", "createdAt", "updatedAt"]
 			}
@@ -106,7 +106,6 @@ where: { isActive: "Y" },
 			data: dishes
 		});
 	} catch (err) {
-		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while retrieving dishes."
 		});
@@ -148,7 +147,6 @@ exports.createCategory = async (req, res) => {
 			data: category
 		});
 	} catch (err) {
-		// emails.errorEmail(req, err);
 		return res.status(500).send({
 			message: err.message || "Some error occurred while creating the dish category."
 		});
@@ -170,7 +168,7 @@ exports.createMainCategory = async (req, res) => {
 		}
 
 		let exist = await Categories.findOne({
-			where: { title: req.body.name , isActive: "Y" }
+			where: { title: req.body.name, isActive: "Y" }
 		});
 
 		if (exist) {
@@ -198,8 +196,6 @@ exports.createMainCategory = async (req, res) => {
 			data: category
 		});
 	} catch (err) {
-		console.log(err);
-		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while creating the main category."
 		});
@@ -213,14 +209,14 @@ exports.listCategory = async (req, res) => {
 			include: [
 				{
 					model: Categories,
-					where: { isActive: "Y" },
+					where: { isActive: "Y" }
 				}
 			]
 		});
 
 		let list = await Categories.findAll({
 			where: { isActive: "Y" },
-			include: [{ model: DishesCategories ,where: { isActive: "Y" }, required: false}]
+			include: [{ model: DishesCategories, where: { isActive: "Y" }, required: false }]
 		});
 
 		encryptHelper(listCategory);
@@ -232,8 +228,6 @@ exports.listCategory = async (req, res) => {
 			list
 		});
 	} catch (err) {
-		console.log(err);
-		// emails.errorEmail(req, err);
 		return res.status(500).send({
 			message: err.message || "Some error occurred while fetching the dish category."
 		});
@@ -255,18 +249,15 @@ exports.update = async (req, res) => {
 
 		const { error, value } = schema.validate(req.body);
 		if (error) {
-			console.log(error);
 			return res.status(400).send({
 				message: error.details[0].message
 			});
 		} else {
 			let updateObj = {
 				title: value.title,
-				// description:value.description,
 				ingredients: value.ingredients,
 				nutritions: value.nutritions,
 				directions: value.directions,
-				// categoryId: crypto.decrypt(value.categoryId),
 				dishesCategoryId: crypto.decrypt(value.subCategoryId),
 				note: value.note
 			};
@@ -289,8 +280,6 @@ exports.update = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
-		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while updating the dish."
 		});
@@ -325,8 +314,6 @@ exports.delete = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
-		// emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while deleting the dish."
 		});

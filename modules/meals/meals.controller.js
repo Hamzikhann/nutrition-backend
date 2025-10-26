@@ -1,10 +1,8 @@
 const db = require("../../models");
 const Joi = require("joi");
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { sequelize } = require("../../models");
 const crypto = require("../../utils/crypto");
 const encryptHelper = require("../../utils/encryptHelper");
-const mealTypes = require("../../models/mealTypes");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 
 const Meals = db.meals;
@@ -95,7 +93,6 @@ exports.create = async (req, res) => {
 			data: meal
 		});
 	} catch (err) {
-		console.log(err);
 		await t.rollback();
 		res.status(500).send({
 			message: err.message || "Some error occurred while creating the meal plan."
@@ -145,7 +142,6 @@ exports.list = async (req, res) => {
 			}
 
 			var userBMR = user.bmr;
-			console.log(`Filtering meals for user BMR: ${userBMR}`);
 
 			// Get all meals first
 			const allMeals = await db.meals.findAll({
@@ -180,8 +176,6 @@ exports.list = async (req, res) => {
 					return false;
 				}
 			});
-
-			console.log(`Found ${meals.length} meals matching user BMR: ${userBMR}`);
 		} else {
 			// For administrators, get all meals
 			meals = await db.meals.findAll({
@@ -200,7 +194,6 @@ exports.list = async (req, res) => {
 			userBMR: role !== "Administrator" ? userBMR : undefined
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while retrieving meal plans."
 		});
@@ -283,7 +276,6 @@ exports.listv2 = async (req, res) => {
 			...(!isAdmin && { userBMR })
 		});
 	} catch (err) {
-		console.error("Error retrieving meal plans:", err);
 		res.status(500).json({
 			message: err.message || "Some error occurred while retrieving meal plans."
 		});
@@ -359,7 +351,6 @@ exports.update = async (req, res) => {
 			data: meal
 		});
 	} catch (err) {
-		console.log(err);
 		await t.rollback();
 		res.status(500).send({
 			message: err.message || "Some error occurred while updating the meal plan."
@@ -392,7 +383,6 @@ exports.delete = async (req, res) => {
 			message: "Meal plan deleted successfully"
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while deleting the meal plan."
 		});

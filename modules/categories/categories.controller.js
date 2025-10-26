@@ -35,11 +35,8 @@ exports.update = async (req, res) => {
 		});
 		const { error } = schema.validate(req.body);
 		if (error) {
-			console.log("Validation error:", error.details[0].message);
 			return res.status(400).send({ message: error.details[0].message });
 		}
-
-		console.log("Request body:", req.body);
 
 		const category = await Categories.update(
 			{
@@ -55,7 +52,6 @@ exports.update = async (req, res) => {
 			data: category
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while updating the category."
 		});
@@ -90,7 +86,6 @@ exports.delete = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while deleting the category."
 		});
@@ -127,7 +122,6 @@ exports.updateSubCategory = async (req, res) => {
 			data: category
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while updating the subcategory."
 		});
@@ -162,7 +156,6 @@ exports.deleteSubCategory = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while deleting the subcategory."
 		});

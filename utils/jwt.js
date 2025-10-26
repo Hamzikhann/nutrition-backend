@@ -27,7 +27,6 @@ exports.protect = async (req, res, next) => {
 				message: "Session has expired. Please log in again."
 			});
 		}
-		console.log(decoded.userId);
 
 		// ✅ NEW: Check if user still exists and is active
 		const userExists = await Users.findOne({
@@ -38,8 +37,6 @@ exports.protect = async (req, res, next) => {
 			},
 			attributes: ["id"] // Only need to check existence
 		});
-		console.log(userExists);
-		console.log(decoded.userId);
 
 		if (!userExists) {
 			// Clear the Redis session since user no longer exists

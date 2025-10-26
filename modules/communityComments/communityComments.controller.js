@@ -14,7 +14,7 @@ const CACHE_TTL = 60;
 const sendCommentNotification = async (postId, commenterId, commentText, action = "added", commenterRole = null) => {
 	try {
 		// Check if commenter is admin/subadmin - ONLY then send notifications
-		const isAdminUser = commenterRole === "Administrator" || commenterRole === "SubAdmin";
+		const isAdminUser = commenterRole === "Administrator" || commenterRole === "Subadmin";
 
 		// If commenter is NOT admin/subadmin, don't send any notifications
 		if (!isAdminUser) {
@@ -58,8 +58,8 @@ const sendCommentNotification = async (postId, commenterId, commentText, action 
 				`${commenter.firstName} ${commenter.lastName} (Admin) ${actionText} your post: "${post.title}"`,
 				notificationType,
 				{
-					postId: postId.toString(),
-					commenterId: commenterId.toString(),
+					postId: crypto.encrypt(postId),
+					commenterId: crypto.encrypt(commenterId),
 					preview: commentText.substring(0, 100),
 					isAdminComment: true
 				}

@@ -7,7 +7,6 @@ const { upload } = fileUpload("userAssesmentForm");
 const userAssesmentFormController = require("./userAssesmentForm.controller");
 
 router.post("/create", upload.array("media"), (req, res) => {
-	console.log(req.files);
 	userAssesmentFormController.create(req, res);
 });
 

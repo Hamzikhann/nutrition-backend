@@ -1,13 +1,9 @@
 const Joi = require("joi");
 const db = require("../../models");
-const emails = require("../../utils/emails");
 const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
 const Op = require("sequelize").Op;
-const { uploadFileToS3 } = require("../../utils/awsServises");
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
-const moment = require('moment-timezone');
-// const deepClone = require("deep-clone");
 
 const Habits = db.habits;
 const HabitCompletions = db.habitsCompletions;
@@ -20,7 +16,6 @@ exports.create = async (req, res) => {
 			description: Joi.string().required(),
 			mandatory: Joi.string().required()
 		});
-		console.log(req.body);
 
 		const { error, value } = schema.validate(req.body);
 		if (error) {
@@ -29,7 +24,6 @@ exports.create = async (req, res) => {
 			});
 		} else {
 			const { name, description, mandatory } = value;
-			console.log(req.userId);
 
 			if (!req.file) {
 				return res.status(400).send({
@@ -38,7 +32,6 @@ exports.create = async (req, res) => {
 			}
 
 			const s3Key = await uploadFileToSpaces(req.file, `habits`);
-			console.log(s3Key);
 
 			const habit = await Habits.create({
 				name,
@@ -56,7 +49,6 @@ exports.create = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while reassigning the booking."
 		});
@@ -161,46 +153,11 @@ exports.list = async (req, res) => {
 			}
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while fetching habit progress."
 		});
 	}
 };
-// Optional helper function for streak calculation
-async function calculateStreak(habitId, userId) {
-	const completions = await HabitCompletions.findAll({
-		where: {
-			habitId: habitId,
-			userId: userId,
-			isCompleted: true
-		},
-		order: [["completedAt", "DESC"]]
-	});
-
-	let streak = 0;
-	let currentDate = new Date();
-
-	for (let i = 0; i < completions.length; i++) {
-		const completionDate = new Date(completions[i].completedAt);
-		completionDate.setHours(0, 0, 0, 0);
-		currentDate.setHours(0, 0, 0, 0);
-
-		const diffDays = Math.floor((currentDate - completionDate) / (1000 * 60 * 60 * 24));
-
-		if (diffDays === 0) {
-			streak++;
-			currentDate.setDate(currentDate.getDate() - 1);
-		} else if (diffDays === 1) {
-			streak++;
-			currentDate.setDate(currentDate.getDate() - 1);
-		} else {
-			break;
-		}
-	}
-
-	return streak;
-}
 
 exports.updateStatus = async (req, res) => {
 	try {
@@ -272,8 +229,6 @@ exports.updateStatus = async (req, res) => {
 			message: "Habit marked as completed for today"
 		});
 	} catch (err) {
-		console.log(err);
-		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while updating habit status."
 		});
@@ -303,7 +258,6 @@ exports.detail = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while reassigning the booking."
 		});
@@ -324,14 +278,14 @@ exports.delete = async (req, res) => {
 
 		const { id } = value;
 		const habitId = crypto.decrypt(id);
-		let userId=crypto.decrypt(req.userId);
+		let userId = crypto.decrypt(req.userId);
 
 		// find habit first
-		const habit = await Habits.findOne({ where: { id: habitId, isActive: "Y"} });
+		const habit = await Habits.findOne({ where: { id: habitId, isActive: "Y" } });
 		if (!habit) {
 			return res.status(404).send({ message: "Habit not found" });
 		}
-	
+
 		// Role-based check
 		if (req.role === "User") {
 			// Restrict users from deleting admin-created habits (userId = 1)
@@ -350,22 +304,17 @@ exports.delete = async (req, res) => {
 		}
 
 		// perform soft delete
-		await Habits.update(
-			{ isActive: "N" },
-			{ where: { id: habitId } }
-		);
+		await Habits.update({ isActive: "N" }, { where: { id: habitId } });
 
 		return res.status(200).send({
 			message: "Habit deleted successfully"
 		});
 	} catch (err) {
-		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while deleting the habit."
 		});
 	}
 };
-
 
 exports.update = async (req, res) => {
 	try {
@@ -413,7 +362,6 @@ exports.update = async (req, res) => {
 			});
 		}
 	} catch (err) {
-		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while reassigning the booking."
 		});
@@ -422,7 +370,6 @@ exports.update = async (req, res) => {
 
 exports.listv2 = async (req, res) => {
 	try {
-		console.log(req.userId);
 		let userId = crypto.decrypt(req.userId);
 		let whereClause = {};
 
@@ -531,7 +478,6 @@ exports.listv2 = async (req, res) => {
 			}
 		});
 	} catch (err) {
-		console.log(err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while fetching habit progress."
 		});
@@ -551,7 +497,7 @@ exports.getHabitProgressGraph = async (req, res) => {
 		}
 
 		const userId = crypto.decrypt(req.body.userId);
-		const timezone = req.body.timezone || 'UTC'; // Default to UTC if not provided
+		const timezone = req.body.timezone || "UTC"; // Default to UTC if not provided
 
 		// Get user to fetch createdAt date
 		const user = await User.findByPk(userId);
@@ -622,8 +568,6 @@ exports.getHabitProgressGraph = async (req, res) => {
 			data: responseData
 		});
 	} catch (err) {
-		console.log(err);
-		emails.errorEmail(req, err);
 		res.status(500).send({
 			message: err.message || "Some error occurred while retrieving habit progress graph."
 		});

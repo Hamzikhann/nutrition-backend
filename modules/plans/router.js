@@ -7,7 +7,6 @@ const jwt = require("../../utils/jwt");
 
 router.post("/list", plansControler.list);
 router.post("/create", jwt.protect, (req, res) => {
-	console.log(req.role);
 	if (req.role == "Administrator" || req.role == "Subadmin") plansControler.create(req, res);
 	else
 		return res.status(400).send({

@@ -1,13 +1,10 @@
 const crypto = require("../utils/crypto");
 
 function deepEncryptIds(obj) {
-	console.log(typeof obj);
-	console.log(obj);
 	if (!obj) return obj;
 
 	// Handle arrays
 	if (Array.isArray(obj)) {
-		console.log(obj);
 		return obj.map((item) => deepEncryptIds(item));
 	}
 
@@ -29,7 +26,6 @@ function deepEncryptIds(obj) {
 
 			// Encrypt ID fields
 			if ((key.endsWith("id") || key.endsWith("Id")) && obj[key] && obj[key] !== 0) {
-				console.log(obj[key]);
 				result[key] = crypto.encrypt(obj[key]);
 			}
 			// Recursively process nested objects/arrays

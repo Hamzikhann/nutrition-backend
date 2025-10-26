@@ -1,13 +1,10 @@
 const fs = require("fs");
 const secrets = require("../config/secrets");
 const nodeMailer = require("./nodeMailer");
-const jwt = require("./jwt");
 const crypto = require("../utils/crypto");
-const handlebars = require("handlebars");
 const { Workbook } = require("exceljs"); // Import exceljs library
 const path = require("path");
 
-// const { MailerSend, EmailParams, Sender, Recipient } = require("mailersend");
 const baseURL = secrets.frontend_URL;
 
 const emailErrorTo = secrets.email.error;
@@ -19,10 +16,6 @@ const emailFrom = secrets.email.auth.from;
  */
 function Email() {}
 
-// const senderName = "Stanserd Parking";
-// const mailerSend = new MailerSend({
-// 	apiKey: process.env.EMAIL_API_KEY
-// });
 Email.errorEmail = async (req, error) => {
 	try {
 		const data = fs.readFileSync("./templates/emailError.html", "utf8");
@@ -225,66 +218,4 @@ Email.sendAdminNotificationEmail = async ({ unassignedBookings = [], cancelledBo
 	}
 };
 
-// Email.sendAdminNotificationEmail = async (unassignedBookings) => {
-// 	try {
-// 		// Create plain text email content
-// 		let emailText = `URGENT: ${unassignedBookings.length} Unassigned Bookings\n\n`;
-// 		emailText += `The following bookings require driver assignments:\n\n`;
-
-// 		unassignedBookings.forEach((booking, index) => {
-// 			emailText += `Booking #${index + 1}:\n`;
-// 			emailText += `ID: ${booking.id}\n`;
-// 			emailText += `Customer: ${booking.Registration?.firstName} ${booking.Registration?.lastName}\n`;
-// 			emailText += `Contact: ${booking.Registration?.phoneNo}\n`;
-// 			emailText += `Airport: ${booking.airport}\n`;
-// 			emailText += `Date: ${booking.startDate}\n`;
-// 			emailText += `Vehicle: ${booking.Vehicle?.vehicleManufacturer} ${booking.Vehicle?.vehicleModel}\n`;
-// 			emailText += `Status: ${booking.status}\n\n`;
-// 		});
-
-// 		emailText += `Action Required:\n`;
-// 		emailText += `Please assign drivers to these bookings immediately.\n`;
-// 		emailText += `Login to admin dashboard.\n\n`;
-// 		emailText += `This is an automated alert.`;
-
-// 		const mailOptions = {
-// 			from: `Park Pilot Alerts <${emailFrom}>`,
-// 			to: "hamzaqasim.c@gmail.com",
-// 			subject: `[Action Required] ${unassignedBookings.length} Unassigned Bookings`,
-// 			text: emailText // Using text instead of html
-// 		};
-
-// 		await nodeMailer(mailOptions);
-// 		console.log("Unassigned bookings alert sent to admin");
-// 	} catch (error) {
-// 		console.error("Failed to send unassigned bookings alert:", error);
-// 		throw error; // Or handle differently based on your error strategy
-// 	}
-// };
-
-// Usage in your existing code:
-
-// Email.sendVerificationEmail = async (email, otp) => {
-// 	try {
-// 		const data = fs.readFileSync("./templates/sendVerificationEmail.html", "utf8");
-// 		const htmlContent = data.replace("[OTP]", otp);
-// 		const textContent = `Your OTP is: ${otp}`; // fallback plain text version
-
-// 		const sentFrom = new Sender(emailFrom, senderName);
-// 		const recipients = [new Recipient(email, "")];
-
-// 		const emailParams = new EmailParams()
-// 			.setFrom(sentFrom)
-// 			.setTo(recipients)
-// 			.setReplyTo(sentFrom)
-// 			.setSubject("Verify Email")
-// 			.setHtml(htmlContent)
-// 			.setText(textContent);
-
-// 		await mailerSend.email.send(emailParams);
-// 	} catch (error) {
-// 		console.error("Failed to send verification email:", error);
-// 		// throw error;
-// 	}
-// };
 module.exports = Email;
