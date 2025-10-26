@@ -99,7 +99,7 @@ exports.create = async (req, res) => {
 				paymentMethod,
 				currency,
 				paymentIntentId,
-				image: fileUrl ? fileUrl : null,
+				file: fileUrl ? fileUrl : null,
 				userId
 			},
 			{
