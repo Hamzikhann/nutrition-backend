@@ -25,6 +25,36 @@ exports.create = async (req, res) => {
 	mealId = crypto.decrypt(mealId);
 	let userId = crypto.decrypt(req.userId);
 
+	let newPlan = await MealPlaner.create({
+		day,
+		categoryId,
+		mealId,
+		userId
+	});
+	encryptHelper(newPlan);
+	return res.status(201).json({
+		message: "Meal plan created successfully",
+		plan: newPlan
+	});
+};
+
+exports.update = async (req, res) => {
+	const schema = joi.object({
+		day: joi.any().required(),
+		categoryId: joi.string().required(),
+		mealId: joi.string().required()
+	});
+
+	const { error } = schema.validate(req.body);
+	if (error) {
+		return res.status(400).send({ message: error.details[0].message });
+	}
+
+	let { day, categoryId, mealId } = req.body;
+	categoryId = crypto.decrypt(categoryId);
+	mealId = crypto.decrypt(mealId);
+	let userId = crypto.decrypt(req.userId);
+
 	let exist = await MealPlaner.findOne({
 		where: { day }
 	});
@@ -36,25 +66,13 @@ exports.create = async (req, res) => {
 				mealId
 			},
 			{
-				where: { day }
+				where: { day, userId }
 			}
 		);
 
 		return res.status(201).json({
 			message: "Meal plan updated successfully",
 			plan: updated
-		});
-	} else {
-		let newPlan = await MealPlaner.create({
-			day,
-			categoryId,
-			mealId,
-			userId
-		});
-		encryptHelper(newPlan);
-		return res.status(201).json({
-			message: "Meal plan created successfully",
-			plan: newPlan
 		});
 	}
 };

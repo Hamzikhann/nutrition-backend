@@ -282,7 +282,6 @@ exports.listPosts = async (req, res) => {
 							include: [
 								{
 									model: db.users,
-									attributes: ["id", "firstName", "lastName"],
 									include: [{ model: db.roles, attributes: ["title"] }]
 								}
 							]
@@ -295,7 +294,6 @@ exports.listPosts = async (req, res) => {
 						},
 						{
 							model: User,
-							attributes: ["id", "firstName", "lastName"],
 
 							include: [{ model: db.roles, attributes: ["title"] }]
 						}
