@@ -172,10 +172,9 @@ exports.addOrUpdateReaction = async (req, res) => {
 		// Send notifications only for new reactions
 		if (!existing) {
 			// Send reaction notification to post owner
-			await sendReactionNotification(postId, userId, reactionType, "added");
-
+			// await sendReactionNotification(postId, userId, reactionType, "added");
 			// Check for popular post milestone
-			await sendPopularPostNotification(postId, totalReactions);
+			// await sendPopularPostNotification(postId, totalReactions);
 		}
 
 		postId = crypto.encrypt(postId);
@@ -244,7 +243,7 @@ exports.removeReaction = async (req, res) => {
 		}
 
 		// Send notification for reaction removal
-		await sendReactionNotification(postId, userId, reactionType, "removed");
+		// await sendReactionNotification(postId, userId, reactionType, "removed");
 
 		postId = crypto.encrypt(postId);
 		return res.json({ success: true, postId, counts });
