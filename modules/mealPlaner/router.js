@@ -5,6 +5,10 @@ router.post("/create", (req, res) => {
 	mealPlanerController.create(req, res);
 });
 
+router.post("/update", (req, res) => {
+	mealPlanerController.update(req, res);
+});
+
 router.post("/list", (req, res) => {
 	mealPlanerController.list(req, res);
 });
