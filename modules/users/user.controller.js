@@ -289,6 +289,7 @@ exports.updateProfile = async (req, res) => {
 				where: {
 					email: req.body.email?.trim(),
 					isActive: "Y",
+					isdeleted: "N",
 					id: { [Op.ne]: userId }
 				}
 			});
