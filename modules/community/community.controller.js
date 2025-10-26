@@ -117,7 +117,7 @@ exports.createPost = async (req, res) => {
 			categoryId: joi.string().required(),
 			title: joi.string().required(),
 			content: joi.string().required(),
-			access: joi.boolean().optional().default(false) // Better to use boolean
+			access: joi.boolean().optional().default(true) // Better to use boolean
 		});
 
 		const { error, value } = schema.validate(req.body);
