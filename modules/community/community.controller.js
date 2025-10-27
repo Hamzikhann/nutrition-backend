@@ -309,7 +309,7 @@ exports.listPosts = async (req, res) => {
 
 		// Get all post IDs - with null checks
 		const postIds = posts
-			.flatMap((category) => category?.CommunityPosts?.map((post) => post.id) || [])
+			.flatMap((category) => category?.communityPosts?.map((post) => post.id) || [])
 			.filter((id) => id); // Remove any undefined/null IDs
 		console.log(postIds);
 		// Single query to get counts for all posts (only if there are posts)
@@ -335,8 +335,8 @@ exports.listPosts = async (req, res) => {
 		// Assign counts to posts - with proper null checks
 		posts?.forEach((category) => {
 			// Check if category and CommunityPosts exist and is an array
-			if (category && Array.isArray(category.CommunityPosts)) {
-				category.CommunityPosts.forEach((post) => {
+			if (category && Array.isArray(category.communityPosts)) {
+				category.communityPosts.forEach((post) => {
 					if (post && post.id) {
 						post.setDataValue("commentsCount", countMap[post.id] || 0);
 					}
