@@ -311,7 +311,7 @@ exports.listPosts = async (req, res) => {
 		const postIds = posts
 			.flatMap((category) => category?.CommunityPosts?.map((post) => post.id) || [])
 			.filter((id) => id); // Remove any undefined/null IDs
-
+		console.log(postIds);
 		// Single query to get counts for all posts (only if there are posts)
 		let countMap = {};
 		if (postIds.length > 0) {
