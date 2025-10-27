@@ -306,7 +306,7 @@ exports.listPosts = async (req, res) => {
 		});
 
 		// Get all post IDs
-		const postIds = posts.flatMap((category) => category.CommunityPosts.map((post) => post.id));
+		const postIds = posts.flatMap((category) => category?.CommunityPosts?.map((post) => post.id));
 
 		// Single query to get counts for all posts
 		const commentCounts = await CommunityComments.findAll({
