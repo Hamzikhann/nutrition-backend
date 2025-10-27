@@ -277,6 +277,7 @@ exports.listPosts = async (req, res) => {
 				{
 					model: CommunityPosts,
 					where: whereCondition,
+					required: false, // Add this to include categories even without posts
 					include: [
 						{
 							model: CommunityLikes,
@@ -306,31 +307,41 @@ exports.listPosts = async (req, res) => {
 			]
 		});
 
-		// Get all post IDs
-		const postIds = posts.flatMap((category) => category?.CommunityPosts?.map((post) => post.id));
+		// Get all post IDs - with null checks
+		const postIds = posts
+			.flatMap((category) => category?.CommunityPosts?.map((post) => post.id) || [])
+			.filter((id) => id); // Remove any undefined/null IDs
 
-		// Single query to get counts for all posts
-		const commentCounts = await CommunityComments.findAll({
-			attributes: ["communityPostId", [sequelize.fn("COUNT", sequelize.col("id")), "count"]],
-			where: {
-				communityPostId: postIds,
-				isActive: "Y"
-			},
-			group: ["communityPostId"],
-			raw: true
-		});
-
-		// Create a lookup map
-		const countMap = commentCounts.reduce((acc, item) => {
-			acc[item.communityPostId] = item.count;
-			return acc;
-		}, {});
-
-		// Assign counts to posts
-		posts.forEach((category) => {
-			category.CommunityPosts.forEach((post) => {
-				post.setDataValue("commentsCount", countMap[post.id] || 0);
+		// Single query to get counts for all posts (only if there are posts)
+		let countMap = {};
+		if (postIds.length > 0) {
+			const commentCounts = await CommunityComments.findAll({
+				attributes: ["communityPostId", [sequelize.fn("COUNT", sequelize.col("id")), "count"]],
+				where: {
+					communityPostId: postIds,
+					isActive: "Y"
+				},
+				group: ["communityPostId"],
+				raw: true
 			});
+
+			// Create a lookup map
+			countMap = commentCounts.reduce((acc, item) => {
+				acc[item.communityPostId] = item.count;
+				return acc;
+			}, {});
+		}
+
+		// Assign counts to posts - with proper null checks
+		posts?.forEach((category) => {
+			// Check if category and CommunityPosts exist and is an array
+			if (category && Array.isArray(category.CommunityPosts)) {
+				category.CommunityPosts.forEach((post) => {
+					if (post && post.id) {
+						post.setDataValue("commentsCount", countMap[post.id] || 0);
+					}
+				});
+			}
 		});
 
 		encryptHelper(posts);
