@@ -324,7 +324,7 @@ exports.listPosts = async (req, res) => {
 				group: ["communityPostId"],
 				raw: true
 			});
-			console / log(commentsCounts);
+			console.log(commentCounts);
 			// Create a lookup map
 			countMap = commentCounts.reduce((acc, item) => {
 				acc[item.communityPostId] = item.count;
