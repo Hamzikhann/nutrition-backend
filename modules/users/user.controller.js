@@ -812,7 +812,7 @@ exports.getHabitProgress = async (req, res) => {
 				isActive: "Y",
 				userId: userId,
 				createdAt: {
-					[Op.between]: [startDateDB.toDate(), endDateDB.toDate()]
+					[Op.between]: [startDateDB, endDateDB]
 				}
 			},
 			attributes: ["id", "habitId", "createdAt"],
