@@ -755,16 +755,19 @@ function convertDurationToWeeks(duration) {
 exports.getHabitProgress = async (req, res) => {
 	try {
 		const { timeZone = "UTC" } = req.body;
+		const userId = crypto.decrypt(req.userId);
 
 		// Get user to fetch createdAt date
-		const user = await Users.findByPk(crypto.decrypt(req.userId));
+		const user = await Users.findByPk(userId);
 		if (!user) {
 			return res.status(404).json({ message: "User not found" });
 		}
+
 		const startDate = moment.tz(user.createdAt, timeZone);
 		const endDate = moment.tz(new Date(), timeZone);
 
 		console.log(`📆 Range: ${startDate.format("YYYY-MM-DD HH:mm:ss")} → ${endDate.format("YYYY-MM-DD HH:mm:ss")}`);
+		console.log(`👤 User ID: ${userId}`);
 
 		// Fetch all active habits with mandatory and percentage
 		const habits = await Habits.findAll({
@@ -776,18 +779,50 @@ exports.getHabitProgress = async (req, res) => {
 			attributes: ["id", "name", "percentage"]
 		});
 		console.log("habits", habits);
+		console.log("User ID for completions:", userId);
+
+		// FIX: Use UTC dates for database query to avoid timezone issues
+		const startDateUTC = moment(user.createdAt).utc();
+		const endDateUTC = moment().utc();
+
+		console.log(
+			`📆 UTC Range for DB query: ${startDateUTC.format("YYYY-MM-DD HH:mm:ss")} → ${endDateUTC.format(
+				"YYYY-MM-DD HH:mm:ss"
+			)}`
+		);
+
 		// Fetch all completions from startDate to endDate
 		const completions = await HabitsCompletions.findAll({
 			where: {
 				isActive: "Y",
-				userId: crypto.decrypt(req.userId),
+				userId: userId,
 				createdAt: {
-					[Op.between]: [startDate.format("YYYY-MM-DD HH:mm:ss"), endDate.format("YYYY-MM-DD HH:mm:ss")]
+					[Op.between]: [startDateUTC.toDate(), endDateUTC.toDate()]
 				}
 			},
-			attributes: ["habitId", "createdAt"]
+			attributes: ["id", "habitId", "createdAt"],
+			raw: true // Add this for easier debugging
 		});
+
 		console.log("completions", completions);
+		console.log(`✅ Found ${completions.length} completions`);
+
+		// // If still no completions, try without date range to debug
+		// if (completions.length === 0) {
+		// 	console.log("🔍 Debug: Fetching ALL completions for user without date range...");
+		// 	const allCompletions = await HabitsCompletions.findAll({
+		// 		where: {
+		// 			isActive: "Y",
+		// 			userId: userId
+		// 		},
+		// 		attributes: ["id", "habitId", "createdAt"],
+		// 		raw: true,
+		// 		order: [["createdAt", "DESC"]],
+		// 		limit: 10
+		// 	});
+		// 	console.log("🔍 Recent completions (last 10):", allCompletions);
+		// }
+
 		// Prepare response data
 		let graphData = [];
 
@@ -802,7 +837,10 @@ exports.getHabitProgress = async (req, res) => {
 				);
 
 				// Add habit percentage if completed that day
-				if (completed) totalPercentage += parseFloat(habit.percentage || 0);
+				if (completed) {
+					totalPercentage += parseFloat(habit.percentage || 0);
+					console.log(`✓ Habit ${habit.id} (${habit.name}) completed on ${day}`);
+				}
 			}
 
 			graphData.push({
