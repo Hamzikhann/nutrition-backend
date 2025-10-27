@@ -6,6 +6,7 @@ const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
 const moment = require("moment-timezone");
 const { Op } = require("sequelize");
 const Notifications = require("../../utils/notificationsHelper");
+const sequelize = db.sequelize;
 
 const CommunityCategories = db.communityCategories;
 const CommunityPosts = db.communityPosts;
