@@ -324,14 +324,14 @@ exports.listPosts = async (req, res) => {
 				group: ["communityPostId"],
 				raw: true
 			});
-
+			console / log(commentsCounts);
 			// Create a lookup map
 			countMap = commentCounts.reduce((acc, item) => {
 				acc[item.communityPostId] = item.count;
 				return acc;
 			}, {});
 		}
-
+		console.log(countMap);
 		// Assign counts to posts - with proper null checks
 		posts?.forEach((category) => {
 			// Check if category and CommunityPosts exist and is an array
