@@ -763,7 +763,7 @@ exports.getHabitProgress = async (req, res) => {
 			return res.status(404).json({ message: "User not found" });
 		}
 
-		// Use timezone for the range (your main logic)
+		// FIX: Use the same timezone conversion for both dates
 		const startDate = moment.tz(user.createdAt, timeZone);
 		const endDate = moment.tz(new Date(), timeZone);
 
@@ -784,45 +784,35 @@ exports.getHabitProgress = async (req, res) => {
 
 		console.log(`📋 Found ${habits.length} habits`);
 
-		// DEBUG: First, let's get ALL completions for this user to see what we have
-		console.log("🔍 Getting ALL completions for user...");
-		const allCompletions = await HabitsCompletions.findAll({
-			where: {
-				isActive: "Y",
-				userId: userId
-			},
-			attributes: ["id", "habitId", "createdAt"],
-			raw: true,
-			order: [["createdAt", "ASC"]]
-		});
-
-		console.log(`🔍 Total completions in DB: ${allCompletions.length}`);
-		if (allCompletions.length > 0) {
-			console.log("🔍 First completion:", allCompletions[0].createdAt);
-			console.log("🔍 Last completion:", allCompletions[allCompletions.length - 1].createdAt);
-
-			// Check if any completions are within our date range
-			const completionsInRange = allCompletions.filter((comp) => {
-				const compDate = moment.tz(comp.createdAt, timeZone);
-				return compDate.isBetween(startDate, endDate, null, "[]"); // [] includes boundaries
-			});
-			console.log(`🔍 Completions within range: ${completionsInRange.length}`);
-		}
-
-		// Now query with the date range - convert to UTC for database query
-		const startDateUTC = moment(user.createdAt).utc();
-		const endDateUTC = moment().utc();
+		// FIX: Use the SAME timezone logic for database query
+		// Convert the timezone dates to UTC for database query
+		const startDateUTC = startDate.clone().utc();
+		const endDateUTC = endDate.clone().utc();
 
 		console.log(
 			`📆 UTC Range for DB: ${startDateUTC.format("YYYY-MM-DD HH:mm:ss")} → ${endDateUTC.format("YYYY-MM-DD HH:mm:ss")}`
 		);
 
+		// FIX: Or better yet, use the original dates without timezone conversion
+		const startDateDB = moment(user.createdAt);
+		const endDateDB = moment();
+
+		console.log(
+			`📆 DB Range (no tz): ${startDateDB.format("YYYY-MM-DD HH:mm:ss")} → ${endDateDB.format("YYYY-MM-DD HH:mm:ss")}`
+		);
+		console.log(
+			`📆 DB Range UTC: ${startDateDB.utc().format("YYYY-MM-DD HH:mm:ss")} → ${endDateDB
+				.utc()
+				.format("YYYY-MM-DD HH:mm:ss")}`
+		);
+
+		// Try query with the original dates (no timezone conversion)
 		const completions = await HabitsCompletions.findAll({
 			where: {
 				isActive: "Y",
 				userId: userId,
 				createdAt: {
-					[Op.between]: [startDateUTC.toDate(), endDateUTC.toDate()]
+					[Op.between]: [startDateDB.toDate(), endDateDB.toDate()]
 				}
 			},
 			attributes: ["id", "habitId", "createdAt"],
@@ -831,28 +821,26 @@ exports.getHabitProgress = async (req, res) => {
 
 		console.log(`✅ Found ${completions.length} completions in date range`);
 
-		// If still no completions, let's try one more approach with string dates
+		// If still no completions, use the filtered completions from our debug check
+		let finalCompletions = completions;
 		if (completions.length === 0) {
-			console.log("🔄 Trying with string date format...");
-
-			const completionsWithStrings = await HabitsCompletions.findAll({
+			console.log("🔄 Using manual date filtering...");
+			// Get all completions and filter manually
+			const allCompletions = await HabitsCompletions.findAll({
 				where: {
 					isActive: "Y",
-					userId: userId,
-					createdAt: {
-						[Op.between]: [startDate.format("YYYY-MM-DD HH:mm:ss"), endDate.format("YYYY-MM-DD HH:mm:ss")]
-					}
+					userId: userId
 				},
 				attributes: ["id", "habitId", "createdAt"],
 				raw: true
 			});
 
-			console.log(`🔄 Found ${completionsWithStrings.length} completions with string dates`);
-
-			// Use whichever approach worked
-			if (completionsWithStrings.length > 0) {
-				completions = completionsWithStrings;
-			}
+			// Manual filtering with timezone
+			finalCompletions = allCompletions.filter((comp) => {
+				const compDate = moment.tz(comp.createdAt, timeZone);
+				return compDate.isBetween(startDate, endDate, null, "[]");
+			});
+			console.log(`🔄 Manually filtered completions: ${finalCompletions.length}`);
 		}
 
 		// Prepare response data
@@ -865,7 +853,7 @@ exports.getHabitProgress = async (req, res) => {
 			let completedHabits = [];
 
 			for (let habit of habits) {
-				const completed = completions.find(
+				const completed = finalCompletions.find(
 					(c) => c.habitId === habit.id && moment.tz(c.createdAt, timeZone).format("YYYY-MM-DD") === day
 				);
 
@@ -877,11 +865,8 @@ exports.getHabitProgress = async (req, res) => {
 						name: habit.name,
 						percentage: percentage
 					});
+					console.log(`✓ Habit ${habit.id} (${habit.name}) completed on ${day}`);
 				}
-			}
-
-			if (completedHabits.length > 0) {
-				console.log(`📊 ${day}: ${completedHabits.length} habits completed, total: ${totalPercentage}%`);
 			}
 
 			graphData.push({
@@ -899,7 +884,7 @@ exports.getHabitProgress = async (req, res) => {
 			graphData,
 			debug: {
 				habitsCount: habits.length,
-				completionsCount: completions.length,
+				completionsCount: finalCompletions.length,
 				timeZone: timeZone
 			}
 		});
