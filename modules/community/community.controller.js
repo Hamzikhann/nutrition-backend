@@ -286,7 +286,10 @@ exports.listPosts = async (req, res) => {
 								}
 							]
 						},
-						{ model: CommunityLikesCounter, attributes: ["reactionType", "count"] },
+						{
+							model: CommunityLikesCounter,
+							attributes: ["reactionType", "count"]
+						},
 						{
 							model: CommunityPostMedia,
 							required: false,
@@ -294,13 +297,39 @@ exports.listPosts = async (req, res) => {
 						},
 						{
 							model: User,
-
 							include: [{ model: db.roles, attributes: ["title"] }]
 						}
 					],
 					order: [["createdAt", "DESC"]]
 				}
 			]
+		});
+
+		// Get all post IDs
+		const postIds = posts.flatMap((category) => category.CommunityPosts.map((post) => post.id));
+
+		// Single query to get counts for all posts
+		const commentCounts = await CommunityComments.findAll({
+			attributes: ["communityPostId", [sequelize.fn("COUNT", sequelize.col("id")), "count"]],
+			where: {
+				communityPostId: postIds,
+				isActive: "Y"
+			},
+			group: ["communityPostId"],
+			raw: true
+		});
+
+		// Create a lookup map
+		const countMap = commentCounts.reduce((acc, item) => {
+			acc[item.communityPostId] = item.count;
+			return acc;
+		}, {});
+
+		// Assign counts to posts
+		posts.forEach((category) => {
+			category.CommunityPosts.forEach((post) => {
+				post.setDataValue("commentsCount", countMap[post.id] || 0);
+			});
 		});
 
 		encryptHelper(posts);

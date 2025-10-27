@@ -775,7 +775,7 @@ exports.getHabitProgress = async (req, res) => {
 			},
 			attributes: ["id", "name", "percentage"]
 		});
-
+		console.log("habits", habits);
 		// Fetch all completions from startDate to endDate
 		const completions = await HabitsCompletions.findAll({
 			where: {
@@ -787,7 +787,7 @@ exports.getHabitProgress = async (req, res) => {
 			},
 			attributes: ["habitId", "createdAt"]
 		});
-
+		console.log("completions", completions);
 		// Prepare response data
 		let graphData = [];
 
