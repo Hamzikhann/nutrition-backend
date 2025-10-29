@@ -784,8 +784,8 @@ exports.getHabitProgress = async (req, res) => {
 				isActive: "Y",
 				userId: userId,
 				[Op.and]: [
-					Sequelize.where(Sequelize.fn("DATE", Sequelize.col("createdAt")), ">=", startDate.format("YYYY-MM-DD")),
-					Sequelize.where(Sequelize.fn("DATE", Sequelize.col("createdAt")), "<=", endDate.format("YYYY-MM-DD"))
+					db.Sequelize.where(db.Sequelize.fn("DATE", db.Sequelize.col("createdAt")), ">=", startDate.format("YYYY-MM-DD")),
+					db.Sequelize.where(db.Sequelize.fn("DATE", db.Sequelize.col("createdAt")), "<=", endDate.format("YYYY-MM-DD"))
 				]
 			},
 			attributes: ["id", "habitId", "createdAt"],
