@@ -4,7 +4,8 @@ const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
 const Op = require("sequelize").Op;
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
-
+// const sequelize = db.sequelize;
+// const {Sequelize}
 const Habits = db.habits;
 const HabitCompletions = db.habitsCompletions;
 const User = db.users;
@@ -433,7 +434,7 @@ exports.listv2 = async (req, res) => {
 				userId: userId,
 				status: "Completed",
 				// Use literal for proper date comparison
-				[Op.and]: [Sequelize.literal(`DATE(createdAt) = CURDATE()`)]
+				[Op.and]: [db.Sequelize.literal(`DATE(createdAt) = CURDATE()`)]
 			}
 		});
 
