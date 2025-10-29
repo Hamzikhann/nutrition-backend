@@ -45,7 +45,7 @@ exports.updateStatus = async (req, res) => {
 		} else {
 			const id = crypto.decrypt(req.body.id);
 
-			const user = await Users.update({ isActive: "Y" }, { where: { id } });
+			const user = await Users.update({ isActive: "Y", activatedAt: new Date() }, { where: { id } });
 
 			// Send notification to the user after status update
 			try {

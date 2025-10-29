@@ -16,6 +16,8 @@ module.exports = (sequelize, DataTypes) => {
 			bmr: DataTypes.STRING,
 			password: DataTypes.STRING,
 			imageURL: DataTypes.STRING,
+			activatedAt: DataTypes.DATE,
+			lastBmrReductionDate: DataTypes.DATE,
 			fcmToken: DataTypes.TEXT,
 			isPayment: {
 				type: DataTypes.STRING,

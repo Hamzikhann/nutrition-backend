@@ -77,21 +77,21 @@ exports.list = async (req, res) => {
 		// Calculate days since user joined
 		const daysSinceUserJoined = Math.max(1, Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24)));
 
-		// Get today's date range
+		// Get today's date range (use the same timezone as your data)
 		const todayStart = new Date();
 		todayStart.setHours(0, 0, 0, 0);
 
 		const todayEnd = new Date();
 		todayEnd.setHours(23, 59, 59, 999);
 
-		// Get all active habits (only mandatory ones count for progress)
+		// Get all active habits
 		const habits = await Habits.findAll({
 			where: whereClause,
 			include: [{ model: HabitCompletions, required: false }]
 		});
 
 		// Filter only mandatory habits for progress calculation
-		const mandatoryHabits = habits.filter((habit) => habit.mandatory === "Y");
+		const mandatoryHabits = habits.filter((habit) => habit.mandatory === "Y" || habit.mandatory === "true");
 		const totalMandatoryHabits = mandatoryHabits.length;
 
 		// Get all completions for mandatory habits by this user
@@ -103,13 +103,14 @@ exports.list = async (req, res) => {
 			}
 		});
 
-		// Get today's completions for mandatory habits
+		// CORRECTED: Get today's completions - use createdAt instead of updatedAt
 		const todayCompletions = await HabitCompletions.findAll({
 			where: {
 				habitId: mandatoryHabits.map((habit) => habit.id),
 				userId: userId,
 				status: "Completed",
-				updatedAt: {
+				// Use createdAt to track when the habit was actually completed
+				createdAt: {
 					[Op.between]: [todayStart, todayEnd]
 				}
 			}
@@ -118,12 +119,16 @@ exports.list = async (req, res) => {
 		// Calculate progress metrics
 		const totalPossibleCompletions = totalMandatoryHabits * daysSinceUserJoined;
 		const totalCompleted = allCompletions.length;
+
+		// CORRECTED: Today's completed should be based on unique habit completions today
 		const todayCompleted = todayCompletions.length;
 
 		const overallPercentage =
 			totalPossibleCompletions > 0 ? Math.round((totalCompleted / totalPossibleCompletions) * 100) : 0;
 
+		// CORRECTED: Today's percentage should be based on mandatory habits count
 		const todayPercentage = totalMandatoryHabits > 0 ? Math.round((todayCompleted / totalMandatoryHabits) * 100) : 0;
+
 		encryptHelper(habits);
 
 		// Return only the progress summary, not embedded in each habit
@@ -131,24 +136,30 @@ exports.list = async (req, res) => {
 			message: "Habit progress summary",
 			data: {
 				habits: habits,
-
 				progress: {
 					overall: {
 						completed: totalCompleted,
 						total: totalPossibleCompletions,
-						percentage: Math.min(overallPercentage, 100) // Cap at 100%
+						percentage: Math.min(overallPercentage, 100)
 					},
 					today: {
 						completed: todayCompleted,
-						total: totalMandatoryHabits,
-						percentage: Math.min(todayPercentage, 100) // Cap at 100%
+						total: totalMandatoryHabits, // This should be 11, not 100
+						percentage: Math.min(todayPercentage, 100)
 					}
 				},
 				summary: {
 					totalHabits: habits.length,
 					mandatoryHabits: totalMandatoryHabits,
 					daysSinceJoined: daysSinceUserJoined,
-					todayDate: new Date().toISOString().split("T")[0]
+					todayDate: new Date().toISOString().split("T")[0],
+					// Add debug info
+					debug: {
+						todayCompletionsCount: todayCompletions.length,
+						todayStart: todayStart,
+						todayEnd: todayEnd,
+						mandatoryHabitIds: mandatoryHabits.map((h) => h.id)
+					}
 				}
 			}
 		});
