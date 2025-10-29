@@ -122,6 +122,10 @@ exports.list = async (req, res) => {
 
 		// CORRECTED: Today's completed should be based on unique habit completions today
 		const todayCompleted = todayCompletions.length;
+		console.log(totalPossibleCompletions);
+		console.log(todayCompleted);
+		console.log(typeof totalPossibleCompletions);
+		console.log(typeof todayCompleted);
 
 		const overallPercentage =
 			totalPossibleCompletions > 0 ? Math.round((totalCompleted / totalPossibleCompletions) * 100) : 0;
