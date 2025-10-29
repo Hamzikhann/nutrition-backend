@@ -399,31 +399,45 @@ exports.listv2 = async (req, res) => {
 			};
 		}
 
-		// Get user creation date to calculate overall progress
+		// Get user creation date
 		const user = await User.findByPk(userId);
 		const userCreatedAt = user ? new Date(user.createdAt) : new Date();
 
 		// Calculate days since user joined
 		const daysSinceUserJoined = Math.max(1, Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24)));
 
-		// Get today's date range (use the same timezone as your data)
-		const todayStart = new Date();
-		todayStart.setHours(0, 0, 0, 0);
-
-		const todayEnd = new Date();
-		todayEnd.setHours(23, 59, 59, 999);
+		// Get today's date range in LOCAL timezone (matches your database timestamps)
+		const now = new Date();
+		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+		const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
 		// Get all active habits
 		const habits = await Habits.findAll({
 			where: whereClause,
-			include: [{ model: HabitCompletions, required: false }]
+			include: [
+				{
+					model: HabitCompletions,
+					required: false
+				}
+			]
 		});
 
-		// Filter only mandatory habits for progress calculation
+		// Filter mandatory habits
 		const mandatoryHabits = habits.filter((habit) => habit.mandatory === "Y" || habit.mandatory === "true");
 		const totalMandatoryHabits = mandatoryHabits.length;
 
-		// Get all completions for mandatory habits by this user
+		// FIXED: Get today's completions using database date function
+		const todayCompletions = await HabitCompletions.findAll({
+			where: {
+				habitId: mandatoryHabits.map((habit) => habit.id),
+				userId: userId,
+				status: "Completed",
+				// Use literal for proper date comparison
+				[Op.and]: [Sequelize.literal(`DATE(createdAt) = CURDATE()`)]
+			}
+		});
+
+		// Get all completions for mandatory habits
 		const allCompletions = await HabitCompletions.findAll({
 			where: {
 				habitId: mandatoryHabits.map((habit) => habit.id),
@@ -432,39 +446,19 @@ exports.listv2 = async (req, res) => {
 			}
 		});
 
-		// CORRECTED: Get today's completions - use createdAt instead of updatedAt
-		const todayCompletions = await HabitCompletions.findAll({
-			where: {
-				habitId: mandatoryHabits.map((habit) => habit.id),
-				userId: userId,
-				status: "Completed",
-				// Use createdAt to track when the habit was actually completed
-				createdAt: {
-					[Op.between]: [todayStart, todayEnd]
-				}
-			}
-		});
-
-		// Calculate progress metrics
+		// Calculate progress
 		const totalPossibleCompletions = totalMandatoryHabits * daysSinceUserJoined;
 		const totalCompleted = allCompletions.length;
-
-		// CORRECTED: Today's completed should be based on unique habit completions today
 		const todayCompleted = todayCompletions.length;
-		console.log(totalPossibleCompletions);
-		console.log(todayCompleted);
-		console.log(typeof totalPossibleCompletions);
-		console.log(typeof todayCompleted);
 
 		const overallPercentage =
-			totalPossibleCompletions > 0 ? Math.round((totalCompleted / totalPossibleCompletions) * 100) : 0;
+			totalPossibleCompletions > 0 ? Math.min(Math.round((totalCompleted / totalPossibleCompletions) * 100), 100) : 0;
 
-		// CORRECTED: Today's percentage should be based on mandatory habits count
-		const todayPercentage = totalMandatoryHabits > 0 ? Math.round((todayCompleted / totalMandatoryHabits) * 100) : 0;
+		const todayPercentage =
+			totalMandatoryHabits > 0 ? Math.min(Math.round((todayCompleted / totalMandatoryHabits) * 100), 100) : 0;
 
 		encryptHelper(habits);
 
-		// Return only the progress summary, not embedded in each habit
 		return res.status(200).send({
 			message: "Habit progress summary",
 			data: {
@@ -473,24 +467,26 @@ exports.listv2 = async (req, res) => {
 					overall: {
 						completed: totalCompleted,
 						total: totalPossibleCompletions,
-						percentage: Math.min(overallPercentage, 100)
+						percentage: overallPercentage
 					},
 					today: {
 						completed: todayCompleted,
-						total: totalMandatoryHabits, // This should be 11, not 100
-						percentage: Math.min(todayPercentage, 100)
+						total: totalMandatoryHabits,
+						percentage: todayPercentage
 					}
 				},
 				summary: {
 					totalHabits: habits.length,
 					mandatoryHabits: totalMandatoryHabits,
 					daysSinceJoined: daysSinceUserJoined,
-					todayDate: new Date().toISOString().split("T")[0],
-					// Add debug info
+					todayDate: now.toISOString().split("T")[0],
 					debug: {
 						todayCompletionsCount: todayCompletions.length,
-						todayStart: todayStart,
-						todayEnd: todayEnd,
+						todayCompletions: todayCompletions.map((c) => ({
+							id: c.id,
+							habitId: c.habitId,
+							createdAt: c.createdAt
+						})),
 						mandatoryHabitIds: mandatoryHabits.map((h) => h.id)
 					}
 				}
