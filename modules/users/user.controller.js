@@ -754,7 +754,7 @@ function convertDurationToWeeks(duration) {
 // 📊 MAIN API: Weekly / Monthly Habit Progress
 exports.getHabitProgress = async (req, res) => {
 	try {
-		const { timeZone = "UTC" } = req.body;
+		const { timeZone = "Asia/Karachi" } = req.body;
 		const userId = crypto.decrypt(req.userId);
 
 		const user = await Users.findByPk(userId);
@@ -762,11 +762,11 @@ exports.getHabitProgress = async (req, res) => {
 			return res.status(404).json({ message: "User not found" });
 		}
 
-		// Use simple date range without timezone complexity
-		const startDate = moment(user.createdAt).startOf("day");
-		const endDate = moment().endOf("day");
+		// Get current date in client's timezone
+		const currentDate = moment().tz(timeZone).format("YYYY-MM-DD");
+		const userCreatedDate = moment.tz(user.createdAt, timeZone).format("YYYY-MM-DD");
 
-		console.log(`📆 Date Range: ${startDate.format("YYYY-MM-DD")} → ${endDate.format("YYYY-MM-DD")}`);
+		console.log(`🌍 Client Date: ${currentDate}, User Created: ${userCreatedDate}`);
 
 		// Fetch habits
 		const habits = await Habits.findAll({
@@ -778,44 +778,46 @@ exports.getHabitProgress = async (req, res) => {
 			attributes: ["id", "name", "percentage"]
 		});
 
-		// Get completions within date range using DATE() function to ignore time
-		const completions = await HabitsCompletions.findAll({
+		// Get all completions and filter by date string
+		const allCompletions = await HabitsCompletions.findAll({
 			where: {
 				isActive: "Y",
-				userId: userId,
-				[Op.and]: [
-					db.Sequelize.where(db.Sequelize.fn("DATE", db.Sequelize.col("createdAt")), ">=", startDate.format("YYYY-MM-DD")),
-					db.Sequelize.where(db.Sequelize.fn("DATE", db.Sequelize.col("createdAt")), "<=", endDate.format("YYYY-MM-DD"))
-				]
+				userId: userId
 			},
 			attributes: ["id", "habitId", "createdAt"],
 			raw: true
 		});
 
-		console.log(`✅ Found ${completions.length} completions`);
-
-		// Group completions by date
-		const completionsByDate = {};
-		completions.forEach((comp) => {
-			const date = moment(comp.createdAt).format("YYYY-MM-DD");
-			if (!completionsByDate[date]) {
-				completionsByDate[date] = [];
-			}
-			completionsByDate[date].push(comp);
+		// Filter completions by date string comparison
+		const relevantCompletions = allCompletions.filter((comp) => {
+			const compDate = moment.tz(comp.createdAt, timeZone).format("YYYY-MM-DD");
+			return compDate >= userCreatedDate && compDate <= currentDate;
 		});
+
+		console.log(`✅ Relevant completions: ${relevantCompletions.length}`);
 
 		// Generate graph data
 		let graphData = [];
-		for (let m = startDate.clone(); m.isSameOrBefore(endDate, "day"); m.add(1, "day")) {
+		const completionsByDate = {};
+
+		relevantCompletions.forEach((comp) => {
+			const date = moment.tz(comp.createdAt, timeZone).format("YYYY-MM-DD");
+			if (!completionsByDate[date]) completionsByDate[date] = [];
+			completionsByDate[date].push(comp);
+		});
+
+		// Create date range
+		const start = moment(userCreatedDate);
+		const end = moment(currentDate);
+
+		for (let m = start; m.isSameOrBefore(end); m.add(1, "day")) {
 			const day = m.format("YYYY-MM-DD");
 			const dayCompletions = completionsByDate[day] || [];
 
 			let totalPercentage = 0;
 			dayCompletions.forEach((comp) => {
 				const habit = habits.find((h) => h.id === comp.habitId);
-				if (habit) {
-					totalPercentage += parseFloat(habit.percentage || 0);
-				}
+				if (habit) totalPercentage += parseFloat(habit.percentage || 0);
 			});
 
 			graphData.push({
@@ -830,7 +832,8 @@ exports.getHabitProgress = async (req, res) => {
 			graphData,
 			debug: {
 				habitsCount: habits.length,
-				completionsCount: completions.length
+				completionsCount: relevantCompletions.length,
+				currentClientDate: currentDate
 			}
 		});
 	} catch (err) {
