@@ -21,8 +21,8 @@ class CronJobs {
 		console.log("All cron jobs initialized");
 	}
 
-	static calculateExpiryDate(createdAt, duration) {
-		const createdDate = new Date(createdAt);
+	static calculateExpiryDate(activatedAt, duration) {
+		const createdDate = new Date(activatedAt);
 		const expiryDate = new Date(createdDate);
 
 		const [value, unit] = duration.split(" ");
@@ -60,7 +60,7 @@ class CronJobs {
 
 			const expiredTrialUsers = await User.findAll({
 				where: {
-					createdAt: {
+					activatedAt: {
 						[db.Sequelize.Op.lte]: threeDaysAgo
 					},
 					isActive: "Y"
@@ -153,7 +153,7 @@ class CronJobs {
 				const userPlan = user.UserPlan;
 				const planDuration = userPlan.Plan.duration;
 				const planName = userPlan.Plan.name || "Your plan";
-				const expiryDate = this.calculateExpiryDate(user.createdAt, planDuration);
+				const expiryDate = this.calculateExpiryDate(user.activatedAt, planDuration);
 
 				if (expiryDate < today) {
 					deactivationPromises.push(async () => {
@@ -211,7 +211,7 @@ class CronJobs {
 						}
 					}
 				],
-				attributes: ["id", "createdAt", "bmr", "email", "firstName", "lastName", "lastBmrReductionDate"]
+				attributes: ["id", "activatedAt", "bmr", "email", "firstName", "lastName", "lastBmrReductionDate"]
 			});
 
 			let bmrUpdatedCount = 0;
@@ -220,7 +220,7 @@ class CronJobs {
 			for (const user of activeUsers) {
 				const referenceDate = user.lastBmrReductionDate
 					? new Date(user.lastBmrReductionDate)
-					: new Date(user.createdAt);
+					: new Date(user.activatedAt);
 
 				referenceDate.setHours(0, 0, 0, 0);
 
