@@ -407,12 +407,7 @@ exports.listv2 = async (req, res) => {
 		// Calculate days since user joined
 		const daysSinceUserJoined = Math.max(1, Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24)));
 
-		// Get today's date range in LOCAL timezone (matches your database timestamps)
-		const now = new Date();
-		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-		const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-		// Get all active habits
+		// Get all active habits with their percentages
 		const habits = await Habits.findAll({
 			where: whereClause,
 			include: [
@@ -423,9 +418,14 @@ exports.listv2 = async (req, res) => {
 			]
 		});
 
-		// Filter mandatory habits
+		// Filter mandatory habits and calculate total possible percentage
 		const mandatoryHabits = habits.filter((habit) => habit.mandatory === "Y" || habit.mandatory === "true");
 		const totalMandatoryHabits = mandatoryHabits.length;
+
+		// Calculate total daily possible percentage (sum of all mandatory habit percentages)
+		const totalDailyPossiblePercentage = mandatoryHabits.reduce((total, habit) => {
+			return total + parseFloat(habit.percentage || 0);
+		}, 0);
 
 		// FIXED: Get today's completions using database date function
 		const todayCompletions = await HabitCompletions.findAll({
@@ -447,16 +447,52 @@ exports.listv2 = async (req, res) => {
 			}
 		});
 
-		// Calculate progress
-		const totalPossibleCompletions = totalMandatoryHabits * daysSinceUserJoined;
-		const totalCompleted = allCompletions.length;
-		const todayCompleted = todayCompletions.length;
+		// Calculate progress based on percentages
+
+		// TODAY'S PROGRESS: Calculate achieved percentage for today
+		let todayAchievedPercentage = 0;
+		const todayCompletedHabitIds = new Set();
+
+		todayCompletions.forEach((completion) => {
+			// Avoid counting duplicate completions for same habit
+			if (!todayCompletedHabitIds.has(completion.habitId)) {
+				const habit = mandatoryHabits.find((h) => h.id === completion.habitId);
+				if (habit) {
+					todayAchievedPercentage += parseFloat(habit.percentage || 0);
+					todayCompletedHabitIds.add(completion.habitId);
+				}
+			}
+		});
+
+		// OVERALL PROGRESS: Calculate total possible and achieved percentages across all days
+		const totalPossiblePercentage = totalDailyPossiblePercentage * daysSinceUserJoined;
+		let totalAchievedPercentage = 0;
+		const completedHabitMap = new Map(); // To track unique habit completions per day
+
+		// Group completions by date to avoid counting same habit multiple times per day
+		allCompletions.forEach((completion) => {
+			const completionDate = new Date(completion.createdAt).toISOString().split("T")[0];
+			const key = `${completion.habitId}-${completionDate}`;
+
+			if (!completedHabitMap.has(key)) {
+				const habit = mandatoryHabits.find((h) => h.id === completion.habitId);
+				if (habit) {
+					totalAchievedPercentage += parseFloat(habit.percentage || 0);
+					completedHabitMap.set(key, true);
+				}
+			}
+		});
+
+		// Calculate percentages
+		const todayPercentage =
+			totalDailyPossiblePercentage > 0
+				? Math.min(Math.round((todayAchievedPercentage / totalDailyPossiblePercentage) * 100), 100)
+				: 0;
 
 		const overallPercentage =
-			totalPossibleCompletions > 0 ? Math.min(Math.round((totalCompleted / totalPossibleCompletions) * 100), 100) : 0;
-
-		const todayPercentage =
-			totalMandatoryHabits > 0 ? Math.min(Math.round((todayCompleted / totalMandatoryHabits) * 100), 100) : 0;
+			totalPossiblePercentage > 0
+				? Math.min(Math.round((totalAchievedPercentage / totalPossiblePercentage) * 100), 100)
+				: 0;
 
 		encryptHelper(habits);
 
@@ -466,13 +502,17 @@ exports.listv2 = async (req, res) => {
 				habits: habits,
 				progress: {
 					overall: {
-						completed: totalCompleted,
-						total: totalPossibleCompletions,
+						completed: allCompletions.length,
+						totalPossibleCompletions: totalMandatoryHabits * daysSinceUserJoined,
+						achievedPercentage: Math.round(totalAchievedPercentage * 100) / 100,
+						totalPossiblePercentage: Math.round(totalPossiblePercentage * 100) / 100,
 						percentage: overallPercentage
 					},
 					today: {
-						completed: todayCompleted,
+						completed: todayCompletions.length,
 						total: totalMandatoryHabits,
+						achievedPercentage: Math.round(todayAchievedPercentage * 100) / 100,
+						totalPossiblePercentage: Math.round(totalDailyPossiblePercentage * 100) / 100,
 						percentage: todayPercentage
 					}
 				},
@@ -480,7 +520,12 @@ exports.listv2 = async (req, res) => {
 					totalHabits: habits.length,
 					mandatoryHabits: totalMandatoryHabits,
 					daysSinceJoined: daysSinceUserJoined,
-					todayDate: now.toISOString().split("T")[0],
+					todayDate: new Date().toISOString().split("T")[0],
+					habitPercentages: mandatoryHabits.map((habit) => ({
+						id: habit.id,
+						name: habit.name,
+						percentage: habit.percentage
+					})),
 					debug: {
 						todayCompletionsCount: todayCompletions.length,
 						todayCompletions: todayCompletions.map((c) => ({
@@ -488,7 +533,8 @@ exports.listv2 = async (req, res) => {
 							habitId: c.habitId,
 							createdAt: c.createdAt
 						})),
-						mandatoryHabitIds: mandatoryHabits.map((h) => h.id)
+						mandatoryHabitIds: mandatoryHabits.map((h) => h.id),
+						totalDailyPossiblePercentage: totalDailyPossiblePercentage
 					}
 				}
 			}
