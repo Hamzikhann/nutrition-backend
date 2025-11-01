@@ -393,21 +393,20 @@ exports.listv2 = async (req, res) => {
 		if (userId == 1) {
 			whereClause = {
 				isActive: "Y"
-			}
+			};
 
-			whereClauseCompletions={
-				isActive:"Y"
-			}
-
+			whereClauseCompletions = {
+				isActive: "Y"
+			};
 		} else {
 			whereClause = {
 				isActive: "Y",
 				userId: [1, userId]
 			};
-			whereClauseCompletions={
-				isActive:"Y",
-				userId:userId
-			}
+			whereClauseCompletions = {
+				isActive: "Y",
+				userId: userId
+			};
 		}
 
 		// Get user creation date
@@ -423,7 +422,7 @@ exports.listv2 = async (req, res) => {
 			include: [
 				{
 					model: HabitCompletions,
-					where:whereClauseCompletions
+					where: whereClauseCompletions,
 					required: false
 				}
 			]
