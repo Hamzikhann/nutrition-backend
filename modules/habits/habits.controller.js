@@ -388,16 +388,26 @@ exports.listv2 = async (req, res) => {
 	try {
 		let userId = crypto.decrypt(req.userId);
 		let whereClause = {};
+		let whereClauseCompletions = {};
 
 		if (userId == 1) {
 			whereClause = {
 				isActive: "Y"
-			};
+			}
+
+			whereClauseCompletions={
+				isActive:"Y"
+			}
+
 		} else {
 			whereClause = {
 				isActive: "Y",
 				userId: [1, userId]
 			};
+			whereClauseCompletions={
+				isActive:"Y",
+				userId:userId
+			}
 		}
 
 		// Get user creation date
@@ -413,6 +423,7 @@ exports.listv2 = async (req, res) => {
 			include: [
 				{
 					model: HabitCompletions,
+					where:whereClauseCompletions
 					required: false
 				}
 			]
