@@ -369,7 +369,8 @@ exports.updateStatus = async (req, res) => {
 			}
 			let findWorkoutCompleted = await WorkoutsCompletions.findOne({
 				where: {
-					workoutDayId: crypto.decrypt(id)
+					workoutDayId: crypto.decrypt(id),
+					userId: crypto.decrypt(req.userId)
 				}
 			});
 			console.log(crypto.decrypt(req.userId));
