@@ -21,7 +21,7 @@ exports.create = async (req, res) => {
 			directions: Joi.string().required(),
 			categoryId: Joi.string().required(),
 			subCategoryId: Joi.string().required(),
-			note: Joi.string().optional()
+			note: Joi.string().optional().allow("", null)
 		});
 
 		const { error } = schema.validate(req.body);
