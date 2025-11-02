@@ -372,6 +372,7 @@ exports.updateStatus = async (req, res) => {
 					workoutDayId: crypto.decrypt(id)
 				}
 			});
+			console.log(crypto.decrypt(req.userId));
 
 			if (findWorkoutCompleted) {
 				return res.status(400).send({
