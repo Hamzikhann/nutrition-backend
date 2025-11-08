@@ -4,7 +4,7 @@ const encryptHelper = require("../../utils/encryptHelper");
 const crypto = require("../../utils/crypto");
 const Op = require("sequelize").Op;
 const { uploadFileToSpaces } = require("../../utils/digitalOceanServises");
-// const sequelize = db.sequelize;
+const Sequelize = db.sequelize;
 // const {Sequelize}
 const Habits = db.habits;
 const HabitCompletions = db.habitsCompletions;
@@ -205,20 +205,12 @@ exports.updateStatus = async (req, res) => {
 			});
 		}
 
-		// Check if already completed today
-		const todayStart = new Date();
-		todayStart.setHours(0, 0, 0, 0);
-
-		const todayEnd = new Date();
-		todayEnd.setHours(23, 59, 59, 999);
-
+		// Use database date function (uses database timezone)
 		const existingCompletion = await HabitCompletions.findOne({
 			where: {
 				habitId: habitId,
 				userId: userId,
-				updatedAt: {
-					[Op.between]: [todayStart, todayEnd]
-				}
+				[Op.and]: [Sequelize.where(Sequelize.fn("DATE", Sequelize.col("updatedAt")), Sequelize.fn("CURDATE"))]
 			}
 		});
 
@@ -236,11 +228,6 @@ exports.updateStatus = async (req, res) => {
 			updatedAt: new Date()
 		});
 
-		// Update habit streak (optional enhancement)
-
-		// Get updated progress information
-
-		// encryptHelper(habitWithProgress);
 		return res.status(200).send({
 			message: "Habit marked as completed for today"
 		});
