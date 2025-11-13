@@ -10,10 +10,12 @@ const Role = db.roles;
 class CronJobs {
 	static init() {
 		// Trial User Deactivation - Every 30 seconds
-		cron.schedule("5 0 * * *", this.deactivateExpiredTrials);
+		// cron.schedule("5 0 * * *", this.deactivateExpiredTrials);
+		cron.schedule("*/10 * * * * *", this.deactivateExpiredTrials);
 
 		// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
-		cron.schedule("10 0 * * *", this.deactivateExpiredPlans);
+		// cron.schedule("10 0 * * *", this.deactivateExpiredPlans);
+		cron.schedule("*/10 * * * * *", this.deactivateExpiredPlans);
 
 		// BMR Reduction - Run daily at 12:15 AM (after midnight)
 		cron.schedule("15 0 * * *", this.reduceBmrMonthly);
@@ -131,7 +133,8 @@ class CronJobs {
 						include: [
 							{
 								model: Plan,
-								attributes: ["duration", "name"]
+								attributes: ["duration", "name"],
+								required: true
 							}
 						]
 					},
