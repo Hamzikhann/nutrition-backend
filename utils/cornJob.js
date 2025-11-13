@@ -155,6 +155,7 @@ class CronJobs {
 			console.log(JSON.stringify(usersWithPlans, null, 2));
 			for (const user of usersWithPlans) {
 				const userPlan = user.userPlans;
+				console.log(JSON.stringify(userPlan, null, 2));
 				const planDuration = userPlan.plan.duration;
 				const planName = userPlan.plan.name || "Your plan";
 				const expiryDate = this.calculateExpiryDate(user.activatedAt, planDuration);
