@@ -10,15 +10,15 @@ const Role = db.roles;
 class CronJobs {
 	static init() {
 		// Trial User Deactivation - Every 30 seconds
-		// cron.schedule("5 0 * * *", this.deactivateExpiredTrials);
-		cron.schedule("*/10 * * * * *", this.deactivateExpiredTrials);
+		// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
+		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
 
 		// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
-		// cron.schedule("10 0 * * *", this.deactivateExpiredPlans);
-		cron.schedule("*/10 * * * * *", this.deactivateExpiredPlans);
+		// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
+		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
 
 		// BMR Reduction - Run daily at 12:15 AM (after midnight)
-		cron.schedule("15 0 * * *", this.reduceBmrMonthly);
+		cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
 
 		console.log("All cron jobs initialized");
 	}
@@ -161,7 +161,7 @@ class CronJobs {
 				console.log(JSON.stringify(userPlan, null, 2));
 				const planDuration = userPlan.plan.duration;
 				const planName = userPlan.plan.name || "Your plan";
-				const expiryDate = this.calculateExpiryDate(user.activatedAt, planDuration);
+				const expiryDate = CronJobs.calculateExpiryDate(user.activatedAt, planDuration);
 
 				if (expiryDate < today) {
 					deactivationPromises.push(async () => {
