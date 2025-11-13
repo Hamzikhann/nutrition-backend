@@ -151,7 +151,8 @@ class CronJobs {
 
 			let expiredUsersCount = 0;
 			const deactivationPromises = [];
-
+			console.log(`Found ${usersWithPlans.length} users with plans to check`);
+			console.log(usersWithPlans);
 			for (const user of usersWithPlans) {
 				const userPlan = user.UserPlan;
 				const planDuration = userPlan.Plan.duration;
