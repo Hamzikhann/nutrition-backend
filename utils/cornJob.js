@@ -156,7 +156,7 @@ class CronJobs {
 			for (const user of usersWithPlans) {
 				console.log("user");
 				console.log(JSON.stringify(user, null, 2));
-				const userPlan = user.userPlans;
+				const userPlan = user.userPlans[0];
 				console.log("userPlan");
 				console.log(JSON.stringify(userPlan, null, 2));
 				const planDuration = userPlan.plan.duration;
