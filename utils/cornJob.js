@@ -10,12 +10,12 @@ const Role = db.roles;
 class CronJobs {
 	static init() {
 		// Trial User Deactivation - Every 30 seconds
-		// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
+		cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
 		// cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
 
 		// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
-		// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
-		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
+		cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
+		// cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
 
 		// BMR Reduction - Run daily at 12:15 AM (after midnight)
 		cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
