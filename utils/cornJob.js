@@ -10,12 +10,12 @@ const Role = db.roles;
 class CronJobs {
 	static init() {
 		// Trial User Deactivation - Every 30 seconds
-		cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
+		// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
 		// cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
 
 		// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
-		cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
-		// cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
+		// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
+		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
 
 		// BMR Reduction - Run daily at 12:15 AM (after midnight)
 		cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
@@ -60,6 +60,7 @@ class CronJobs {
 			threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 			threeDaysAgo.setHours(0, 0, 0, 0);
 
+			// FIXED: Remove the problematic UserPlan include condition
 			const expiredTrialUsers = await User.findAll({
 				where: {
 					activatedAt: {
@@ -70,10 +71,7 @@ class CronJobs {
 				include: [
 					{
 						model: UserPlan,
-						required: false,
-						where: {
-							id: null
-						}
+						required: false // Just check if they have any UserPlan, don't filter by id
 					},
 					{
 						model: Role,
@@ -86,9 +84,14 @@ class CronJobs {
 				]
 			});
 
-			console.log(`Found ${expiredTrialUsers.length} trial users to deactivate`);
+			console.log(`Found ${expiredTrialUsers.length} users with expired trials`);
 
-			const deactivationPromises = expiredTrialUsers.map(async (user) => {
+			// FIXED: Filter in JavaScript to find users WITHOUT UserPlans
+			const usersWithoutPlans = expiredTrialUsers.filter((user) => !user.UserPlans || user.UserPlans.length === 0);
+
+			console.log(`Found ${usersWithoutPlans.length} trial users without plans to deactivate`);
+
+			const deactivationPromises = usersWithoutPlans.map(async (user) => {
 				// Deactivate the user
 				await user.update({ isActive: "N" });
 
@@ -101,7 +104,7 @@ class CronJobs {
 					{
 						deactivationDate: new Date().toISOString(),
 						reason: "trial_ended",
-						upgradeUrl: "/plans" // You can add your upgrade URL here
+						upgradeUrl: "/plans"
 					}
 				);
 
@@ -109,7 +112,7 @@ class CronJobs {
 			});
 
 			await Promise.all(deactivationPromises);
-			console.log(`Successfully deactivated ${expiredTrialUsers.length} trial users and sent notifications`);
+			console.log(`Successfully deactivated ${usersWithoutPlans.length} trial users and sent notifications`);
 		} catch (error) {
 			console.error("Error in trial user deactivation cron job:", error);
 		}
@@ -148,7 +151,7 @@ class CronJobs {
 					}
 				]
 			});
-
+			console.log(usersWithPlans);
 			let expiredUsersCount = 0;
 			const deactivationPromises = [];
 			console.log(`Found ${usersWithPlans.length} users with plans to check`);
