@@ -83,7 +83,7 @@ class Server {
 		console.log("🕐 Initializing cron jobs...");
 
 		// Method 1: Initialize using your CronJobs class
-		CronJobs.init();
+		// CronJobs.init();
 
 		// Method 2: Or initialize individual cron jobs manually
 		// if (process.env.CRON_JOBS_ENABLED === "true") {
