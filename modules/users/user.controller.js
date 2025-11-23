@@ -107,19 +107,19 @@ exports.create = async (req, res) => {
 					mesage: "Email already registered."
 				});
 			} else {
+				// Remove spaces from phone number
+				let phoneNo = req.body.phoneNo.replace(/\s+/g, "");
+
 				const userObj = {
 					firstName: req.body.firstName?.trim(),
 					lastName: req.body.lastName?.trim(),
-					phoneNo: req.body.phoneNo,
+					phoneNo: phoneNo, // Store without spaces
 					email: req.body.email,
 					isActive: "N",
 					roleId: 2
 				};
 				let transactionUpload = await uploadFileToSpaces(req.file, "Payments");
 				const getPlan = await Plan.findOne({ where: { id: crypto.decrypt(req.body.planId), isActive: "Y" } });
-
-				// if (req.role == "Administrator") userObj.roleId = crypto.decrypt(req.body.roleId);
-				// else userObj.roleId = "3";
 
 				let transaction = await sequelize.transaction();
 				Users.create(userObj, { transaction })
