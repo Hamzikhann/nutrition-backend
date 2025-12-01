@@ -141,6 +141,7 @@ exports.create = async (req, res) => {
 								let createUserPlans = await UserPlans.create(
 									{
 										planId: getPlan.id,
+										duration: getPlan.duration,
 										userId: user.id
 									},
 									{ transaction }
