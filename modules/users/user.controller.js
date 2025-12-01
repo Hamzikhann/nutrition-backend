@@ -665,7 +665,9 @@ exports.createEmployee = async (req, res) => {
 				message: message
 			});
 		} else {
-			const userExists = await Users.findOne({ where: { email: req.body.email?.trim(), isActive: "Y" } });
+			const userExists = await Users.findOne({
+				where: { email: req.body.email?.trim(), isActive: "Y", roleId: crypto.decrypt(req.body.role), isDeleted: "N" }
+			});
 
 			if (userExists) {
 				res.status(401).send({
