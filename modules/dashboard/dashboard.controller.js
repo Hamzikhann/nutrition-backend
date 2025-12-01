@@ -15,13 +15,14 @@ exports.getDashboardStats = async (req, res) => {
 
 		// Get total users count
 		const totalUsers = await Users.count({
-			where: { isActive: "Y" }
+			where: { isActive: "Y", isDeleted: "N" }
 		});
 
 		// Get users count from 1 month ago for growth calculation
 		const usersOneMonthAgo = await Users.count({
 			where: {
 				isActive: "Y",
+				isDeleted: "N",
 				createdAt: {
 					[Op.lt]: oneMonthAgo
 				}
@@ -85,11 +86,11 @@ exports.getDashboardStats = async (req, res) => {
 
 		// Get active and inactive users
 		const activeUsers = await Users.count({
-			where: { isActive: "Y", id: { [Op.ne]: 1 } }
+			where: { isActive: "Y", isDeleted: "N", id: { [Op.ne]: 1 } }
 		});
 
 		const inactiveUsers = await Users.count({
-			where: { isActive: "N" }
+			where: { isActive: "N", isDeleted: "N", id: { [Op.ne]: 1 } }
 		});
 
 		const totalUsersCount = activeUsers + inactiveUsers;
@@ -98,7 +99,7 @@ exports.getDashboardStats = async (req, res) => {
 		const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
 		const activeUsersWithActivity = await Users.count({
-			where: { isActive: "Y", id: { [Op.ne]: 1 } },
+			where: { isActive: "Y", isDeleted: "N", id: { [Op.ne]: 1 } },
 			include: [
 				{
 					model: HabitsCompletions,
@@ -164,6 +165,7 @@ exports.getMonthlyUserGrowth = async (req, res) => {
 			const userCount = await Users.count({
 				where: {
 					isActive: "Y",
+					isDeleted: "N",
 					createdAt: {
 						[Op.between]: [monthStart, monthEnd]
 					}
@@ -172,6 +174,7 @@ exports.getMonthlyUserGrowth = async (req, res) => {
 			const inactiveuserCount = await Users.count({
 				where: {
 					isActive: "N",
+					isDeleted: "N",
 					createdAt: {
 						[Op.between]: [monthStart, monthEnd]
 					}
@@ -212,6 +215,7 @@ exports.getUserActivityStats = async (req, res) => {
 				col: "id",
 				where: {
 					isActive: "Y",
+					isDeleted: "N",
 					[Op.or]: [{ updatedAt: { [Op.between]: [dayStart, dayEnd] } }]
 				},
 				include: [
