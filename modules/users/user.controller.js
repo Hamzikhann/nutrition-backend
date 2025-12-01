@@ -874,6 +874,7 @@ exports.updateEmployee = async (req, res) => {
 			where: {
 				email: req.body.email.trim(),
 				isActive: "Y",
+				isDeleted: "N",
 				id: { [Op.ne]: userId }
 			}
 		});
