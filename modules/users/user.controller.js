@@ -99,7 +99,9 @@ exports.create = async (req, res) => {
 				});
 			}
 
-			const userExists = await Users.findOne({ where: { email: req.body.email?.trim(), isActive: "Y" } });
+			const userExists = await Users.findOne({
+				where: { email: req.body.email?.trim(), isActive: "Y", isDeleted: "N" }
+			});
 
 			if (userExists) {
 				res.status(401).send({
