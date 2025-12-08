@@ -230,7 +230,7 @@ exports.getUserProgress = async (req, res) => {
 			}
 		});
 
-		console.log(WorkoutDayss);
+		// console.log(WorkoutDayss);
 		const workoutDayId = WorkoutDayss.map((w) => w.id);
 		console.log(workoutDayId);
 		// Total workouts: count exercises in those weeks
