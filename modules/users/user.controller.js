@@ -183,12 +183,95 @@ exports.create = async (req, res) => {
 	}
 };
 
+// exports.getUserProgress = async (req, res) => {
+// 	try {
+// 		const joiSchema = Joi.object({
+// 			userId: Joi.string().required()
+// 		});
+// 		const { error, value } = joiSchema.validate(req.body);
+// 		if (error) {
+// 			return res.status(400).send({
+// 				message: error.details[0].message
+// 			});
+// 		}
+
+// 		const userId = crypto.decrypt(req.body.userId);
+
+// 		// Get user's plan
+// 		const userPlan = await UserPlans.findOne({
+// 			where: { userId, isActive: "Y" },
+// 			include: [{ model: Plan }]
+// 		});
+
+// 		if (!userPlan) {
+// 			return res.status(200).send({
+// 				message: "User progress retrieved successfully",
+// 				data: {
+// 					totalWorkouts: 0,
+// 					completedWorkouts: 0,
+// 					habits: []
+// 				}
+// 			});
+// 		}
+
+// 		// const planId = userPlan.planId;
+// 		const durationWeeks = convertDurationToWeeks(userPlan.duration);
+// 		// Get weeks for the plan
+// 		// const weeks = await Week.findAll({
+// 		// 	where: {
+// 		// 		order: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
+// 		// 	}
+// 		// });
+// 		// const weekIds = weeks.map((w) => w.id);
+// 		console.log(durationWeeks);
+// 		const WorkoutDayss = await WorkoutDays.findAll({
+// 			where: {
+// 				dayNumber: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
+// 			}
+// 		});
+
+// 		// console.log(WorkoutDayss);
+// 		const workoutDayId = WorkoutDayss.map((w) => w.id);
+// 		console.log(workoutDayId);
+// 		// Total workouts: count exercises in those weeks
+// 		const totalWorkouts = await WorkOutDayExercises.count({ where: { workoutDayId: workoutDayId, isActive: "Y" } });
+// 		console.log(totalWorkouts);
+// 		// Completed workouts: count completions for the user
+// 		const completedWorkouts = await WorkoutsCompletions.count({ where: { userId } });
+
+// 		// Get habits
+// 		const userHabits = await Habits.findAll({
+// 			where: { mandatory: true, isActive: "Y" },
+// 			include: [{ model: HabitsCompletions, required: true }]
+// 		});
+
+// 		const habits = userHabits.map((uh) => ({
+// 			name: uh.habit.name,
+// 			completed: uh.habitsCompletions && uh.habitsCompletions.length > 0
+// 		}));
+
+// 		return res.status(200).send({
+// 			message: "User progress retrieved successfully",
+// 			data: {
+// 				totalWorkouts,
+// 				completedWorkouts,
+// 				habits
+// 			}
+// 		});
+// 	} catch (err) {
+// 		emails.errorEmail(req, err);
+// 		res.status(500).send({
+// 			message: err.message || "Some error occurred while retrieving user progress."
+// 		});
+// 	}
+// };
+
 exports.getUserProgress = async (req, res) => {
 	try {
 		const joiSchema = Joi.object({
 			userId: Joi.string().required()
 		});
-		const { error, value } = joiSchema.validate(req.body);
+		const { error } = joiSchema.validate(req.body);
 		if (error) {
 			return res.status(400).send({
 				message: error.details[0].message
@@ -209,45 +292,75 @@ exports.getUserProgress = async (req, res) => {
 				data: {
 					totalWorkouts: 0,
 					completedWorkouts: 0,
+					completionPercentage: 0,
 					habits: []
 				}
 			});
 		}
 
-		// const planId = userPlan.planId;
+		const Op = db.Sequelize.Op;
 		const durationWeeks = convertDurationToWeeks(userPlan.duration);
-		// Get weeks for the plan
-		// const weeks = await Week.findAll({
-		// 	where: {
-		// 		order: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
-		// 	}
-		// });
-		// const weekIds = weeks.map((w) => w.id);
-		console.log(durationWeeks);
-		const WorkoutDayss = await WorkoutDays.findAll({
+
+		// Get workout days up to plan duration
+		const workoutDays = await WorkoutDays.findAll({
 			where: {
-				dayNumber: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
+				dayNumber: { [Op.lte]: durationWeeks }
+			}
+		});
+		const workoutDayIds = workoutDays.map((w) => w.id);
+
+		// Count exercises that belong to those workout days
+		const totalExercises = await WorkOutDayExercises.count({
+			where: { workoutDayId: workoutDayIds, isActive: "Y" }
+		});
+
+		// Fetch completions for this user (limit to these workout days)
+		const completions = await WorkoutsCompletions.findAll({
+			where: {
+				userId,
+				workoutDayId: workoutDayIds,
+				isActive: "Y"
 			}
 		});
 
-		// console.log(WorkoutDayss);
-		const workoutDayId = WorkoutDayss.map((w) => w.id);
-		console.log(workoutDayId);
-		// Total workouts: count exercises in those weeks
-		const totalWorkouts = await WorkOutDayExercises.count({ where: { workoutDayId: workoutDayId, isActive: "Y" } });
-		console.log(totalWorkouts);
-		// Completed workouts: count completions for the user
-		const completedWorkouts = await WorkoutsCompletions.count({ where: { userId } });
+		let totalWorkouts = 0;
+		let completedWorkouts = 0;
+		// Determine whether completions are recorded at exercise-level or day-level.
+		const hasExerciseLevelCompletions = completions.some((c) => c.workoutDayExerciseId);
 
-		// Get habits
+		if (hasExerciseLevelCompletions) {
+			// If completions are at exercise-level:
+			// totalWorkouts = total exercises; completedWorkouts = number of completed exercise records (unique if you prefer)
+			totalWorkouts = totalExercises;
+			// If there can be duplicates, dedupe by workoutDayExerciseId
+			const completedExerciseIds = completions.filter((c) => c.workoutDayExerciseId).map((c) => c.workoutDayExerciseId);
+			completedWorkouts = Array.from(new Set(completedExerciseIds)).length;
+		} else {
+			// Completions are at day-level:
+			// totalWorkouts = number of workout days in the plan; completedWorkouts = number of distinct completed workoutDayId
+			totalWorkouts = workoutDayIds.length;
+			const completedDayIds = completions.map((c) => c.workoutDayId).filter(Boolean);
+			completedWorkouts = Array.from(new Set(completedDayIds)).length;
+		}
+
+		// completion percentage (guard divide by zero)
+		const completionPercentage = totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0;
+
+		// Get habits mandatory and active, but only mark completed if the user has a completion record
 		const userHabits = await Habits.findAll({
 			where: { mandatory: true, isActive: "Y" },
-			include: [{ model: HabitsCompletions, required: true }]
+			include: [
+				{
+					model: HabitsCompletions,
+					required: false,
+					where: { userId } // only completions by this user
+				}
+			]
 		});
 
 		const habits = userHabits.map((uh) => ({
-			name: uh.habit.name,
-			completed: uh.habitsCompletions && uh.habitsCompletions.length > 0
+			name: uh.name || (uh.habit && uh.habit.name) || "Unnamed Habit",
+			completed: Array.isArray(uh.habitsCompletions) && uh.habitsCompletions.length > 0
 		}));
 
 		return res.status(200).send({
@@ -255,6 +368,7 @@ exports.getUserProgress = async (req, res) => {
 			data: {
 				totalWorkouts,
 				completedWorkouts,
+				completionPercentage,
 				habits
 			}
 		});
