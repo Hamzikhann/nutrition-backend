@@ -223,17 +223,19 @@ exports.getUserProgress = async (req, res) => {
 		// 	}
 		// });
 		// const weekIds = weeks.map((w) => w.id);
-
+		console.log(durationWeeks);
 		const WorkoutDayss = await WorkoutDays.findAll({
 			where: {
 				dayNumber: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
 			}
 		});
-		const workoutDayId = WorkoutDayss.map((w) => w.id);
 
+		console.log(WorkoutDayss);
+		const workoutDayId = WorkoutDayss.map((w) => w.id);
+		console.log(workoutDayId);
 		// Total workouts: count exercises in those weeks
 		const totalWorkouts = await WorkOutDayExercises.count({ where: { workoutDayId: workoutDayId, isActive: "Y" } });
-
+		console.log(totalWorkouts);
 		// Completed workouts: count completions for the user
 		const completedWorkouts = await WorkoutsCompletions.count({ where: { userId } });
 
