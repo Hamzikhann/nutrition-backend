@@ -31,6 +31,7 @@ const WorkOutDayExercises = db.workoutDayExercises;
 const WorkoutsCompletions = db.workoutsCompletions;
 const Habits = db.habits;
 const HabitsCompletions = db.habitsCompletions;
+const WorkoutDays = db.workoutDays;
 
 exports.updateStatus = async (req, res) => {
 	try {
@@ -198,7 +199,7 @@ exports.getUserProgress = async (req, res) => {
 
 		// Get user's plan
 		const userPlan = await UserPlans.findOne({
-			where: { userId },
+			where: { userId, isActive: "Y" },
 			include: [{ model: Plan }]
 		});
 
@@ -216,14 +217,22 @@ exports.getUserProgress = async (req, res) => {
 		// const planId = userPlan.planId;
 		const durationWeeks = convertDurationToWeeks(userPlan.duration);
 		// Get weeks for the plan
-		const weeks = await Week.findAll({
+		// const weeks = await Week.findAll({
+		// 	where: {
+		// 		order: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
+		// 	}
+		// });
+		// const weekIds = weeks.map((w) => w.id);
+
+		const WorkoutDayss = await WorkoutDays.findAll({
 			where: {
-				order: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
+				dayNumber: { [db.Sequelize.Op.lte]: durationWeeks } // numeric comparison
 			}
 		});
-		const weekIds = weeks.map((w) => w.id);
+		const workoutDayId = WorkoutDayss.map((w) => w.id);
+
 		// Total workouts: count exercises in those weeks
-		const totalWorkouts = await WorkOutDayExercises.count({ where: { weekId: weekIds } });
+		const totalWorkouts = await WorkOutDayExercises.count({ where: { workoutDayId: workoutDayId, isActive: "Y" } });
 
 		// Completed workouts: count completions for the user
 		const completedWorkouts = await WorkoutsCompletions.count({ where: { userId } });
