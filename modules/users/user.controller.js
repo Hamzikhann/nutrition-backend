@@ -348,7 +348,7 @@ exports.getUserProgress = async (req, res) => {
 
 		// Get habits mandatory and active, but only mark completed if the user has a completion record
 		const userHabits = await Habits.findAll({
-			where: { mandatory: true, isActive: "Y" },
+			where: { mandatory: "true", isActive: "Y" },
 			include: [
 				{
 					model: HabitsCompletions,
