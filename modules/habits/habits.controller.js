@@ -10,6 +10,9 @@ const Habits = db.habits;
 const HabitCompletions = db.habitsCompletions;
 const User = db.users;
 
+const moment = require("moment-timezone");
+// const { , Op } = require("sequelize");
+
 exports.create = async (req, res) => {
 	try {
 		const schema = Joi.object({
@@ -175,68 +178,168 @@ exports.list = async (req, res) => {
 	}
 };
 
-exports.updateStatus = async (req, res) => {
-	try {
-		const schema = Joi.object({
-			id: Joi.string().required()
-		});
+// exports.updateStatus = async (req, res) => {
+// 	try {
+// 		const schema = Joi.object({
+// 			id: Joi.string().required()
+// 		});
 
-		const { error, value } = schema.validate(req.body);
-		if (error) {
-			return res.status(400).send({
-				message: error.details[0].message
-			});
+// 		const { error, value } = schema.validate(req.body);
+// 		if (error) {
+// 			return res.status(400).send({
+// 				message: error.details[0].message
+// 			});
+// 		}
+
+// 		const habitId = crypto.decrypt(req.body.id);
+// 		const userId = crypto.decrypt(req.userId);
+
+// 		// Check if habit exists and user has access
+// 		const habit = await Habits.findOne({
+// 			where: {
+// 				id: habitId,
+// 				isActive: "Y"
+// 			}
+// 		});
+
+// 		if (!habit) {
+// 			return res.status(404).send({
+// 				message: "Habit not found or you don't have access to it"
+// 			});
+// 		}
+
+// 		// Use database date function (uses database timezone)
+// 		const existingCompletion = await HabitCompletions.findOne({
+// 			where: {
+// 				habitId: habitId,
+// 				userId: userId,
+// 				[Op.and]: [Sequelize.where(Sequelize.fn("DATE", Sequelize.col("updatedAt")), Sequelize.fn("CURDATE"))]
+// 			}
+// 		});
+
+// 		if (existingCompletion) {
+// 			return res.status(400).send({
+// 				message: "Habit already completed today"
+// 			});
+// 		}
+
+// 		// Create a new completion record
+// 		const completion = await HabitCompletions.create({
+// 			habitId: habitId,
+// 			userId: userId,
+// 			status: "Completed",
+// 			updatedAt: new Date()
+// 		});
+
+// 		return res.status(200).send({
+// 			message: "Habit marked as completed for today"
+// 		});
+// 	} catch (err) {
+// 		res.status(500).send({
+// 			message: err.message || "Some error occurred while updating habit status."
+// 		});
+// 	}
+// };
+
+exports.updateStatus = async (req, res) => {
+	const schema = Joi.object({
+		id: Joi.string().required(), // encrypted habit id
+		timezone: Joi.string().required(), // IANA timezone e.g. "Asia/Dubai"
+		currentDate: Joi.string().optional().allow("").allow(null) // optional YYYY-MM-DD
+	});
+
+	const { error, value } = schema.validate(req.body);
+	if (error) {
+		return res.status(400).send({ message: error.details[0].message });
+	}
+
+	try {
+		// Decrypt IDs - keep your existing auth flow
+		const habitId = crypto.decrypt(req.body.id);
+		const userId = crypto.decrypt(req.userId); // assuming req.userId is encrypted like before
+		const timezone = req.body.timezone;
+		const providedDate =
+			req.body.currentDate && req.body.currentDate.trim() !== "" ? req.body.currentDate.trim() : null;
+
+		// Validate timezone by trying to use it (moment will throw if invalid)
+		if (!moment.tz.zone(timezone)) {
+			return res.status(400).send({ message: "Invalid timezone provided" });
 		}
 
-		const habitId = crypto.decrypt(req.body.id);
-		const userId = crypto.decrypt(req.userId);
-
-		// Check if habit exists and user has access
+		// Ensure habit exists and active
 		const habit = await Habits.findOne({
-			where: {
-				id: habitId,
-				isActive: "Y"
-			}
+			where: { id: habitId, isActive: "Y" }
 		});
 
 		if (!habit) {
-			return res.status(404).send({
-				message: "Habit not found or you don't have access to it"
-			});
+			return res.status(404).send({ message: "Habit not found or you don't have access to it" });
 		}
 
-		// Use database date function (uses database timezone)
-		const existingCompletion = await HabitCompletions.findOne({
-			where: {
-				habitId: habitId,
-				userId: userId,
-				[Op.and]: [Sequelize.where(Sequelize.fn("DATE", Sequelize.col("updatedAt")), Sequelize.fn("CURDATE"))]
+		// Compute localDate (YYYY-MM-DD)
+		let localDate;
+		if (providedDate) {
+			// Basic format check (YYYY-MM-DD). Will accept provided date but still interpret as local date.
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(providedDate)) {
+				return res.status(400).send({ message: "currentDate must be in YYYY-MM-DD format" });
 			}
-		});
-
-		if (existingCompletion) {
-			return res.status(400).send({
-				message: "Habit already completed today"
-			});
+			localDate = providedDate;
+		} else {
+			localDate = moment().tz(timezone).format("YYYY-MM-DD");
 		}
 
-		// Create a new completion record
-		const completion = await HabitCompletions.create({
-			habitId: habitId,
-			userId: userId,
-			status: "Completed",
-			updatedAt: new Date()
+		// Prepare UTC timestamps for createdAt/updatedAt
+		const utcNow = moment().utc().toDate();
+
+		// Use a transaction for safety
+		const result = await Sequelize.transaction(async (t) => {
+			// First check if a completion already exists for this localDate
+			const existing = await HabitCompletions.findOne({
+				where: { habitId, userId, localDate },
+				transaction: t,
+				lock: t.LOCK.UPDATE // optional, depends on your DB isolation/locking preferences
+			});
+
+			if (existing) {
+				// Already completed for that local date
+				return { already: true };
+			}
+
+			// Create the completion row. Rely on DB unique index to prevent duplicates under race.
+			const created = await HabitCompletions.create(
+				{
+					habitId,
+					userId,
+					status: "Completed",
+					isActive: "Y",
+					localDate, // DATEONLY column (YYYY-MM-DD)
+					createdAt: utcNow,
+					updatedAt: utcNow
+				},
+				{ transaction: t }
+			);
+
+			return { already: false, created };
 		});
 
-		return res.status(200).send({
-			message: "Habit marked as completed for today"
-		});
+		if (result.already) {
+			return res.status(400).send({ message: "Habit already completed for this local day" });
+		}
+
+		return res.status(200).send({ message: "Habit marked as completed for today" });
 	} catch (err) {
-		res.status(500).send({
+		// Handle unique constraint error if insert raced with another request
+		// Sequelize throws a SequelizeUniqueConstraintError
+		if (err && err.name === "SequelizeUniqueConstraintError") {
+			return res.status(400).send({ message: "Habit already completed for this local day" });
+		}
+
+		console.error("updateStatus error:", err);
+		return res.status(500).send({
 			message: err.message || "Some error occurred while updating habit status."
 		});
 	}
 };
+
 exports.detail = async (req, res) => {
 	try {
 		const schema = Joi.object({
