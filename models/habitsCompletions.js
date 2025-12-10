@@ -5,7 +5,10 @@ module.exports = (sequelize, DataTypes) => {
 		"habitsCompletions",
 		{
 			status: DataTypes.STRING,
-
+			localDate: {
+				type: DataTypes.DATEONLY,
+				allowNull: true
+			},
 			isActive: {
 				type: DataTypes.STRING,
 				allowNull: false,
