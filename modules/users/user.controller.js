@@ -908,30 +908,28 @@ exports.getHabitProgress = async (req, res) => {
 			attributes: ["id", "name", "percentage"]
 		});
 
-		// Get all completions and filter by date string
+		// Fetch all completions using localDate (timezone already applied when saving)
 		const allCompletions = await HabitsCompletions.findAll({
 			where: {
 				isActive: "Y",
-				userId: userId
+				userId: userId,
+				localDate: {
+					[Op.gte]: userCreatedDate,
+					[Op.lte]: currentDate
+				}
 			},
-			attributes: ["id", "habitId", "createdAt"],
+			attributes: ["id", "habitId", "localDate"],
 			raw: true
 		});
 
-		// Filter completions by date string comparison
-		const relevantCompletions = allCompletions.filter((comp) => {
-			const compDate = moment.tz(comp.createdAt, timeZone).format("YYYY-MM-DD");
-			return compDate >= userCreatedDate && compDate <= currentDate;
-		});
-
-		console.log(`✅ Relevant completions: ${relevantCompletions.length}`);
+		console.log(`✅ Relevant completions: ${allCompletions.length}`);
 
 		// Generate graph data
 		let graphData = [];
 		const completionsByDate = {};
 
-		relevantCompletions.forEach((comp) => {
-			const date = moment.tz(comp.createdAt, timeZone).format("YYYY-MM-DD");
+		allCompletions.forEach((comp) => {
+			const date = comp.localDate; // use localDate directly
 			if (!completionsByDate[date]) completionsByDate[date] = [];
 			completionsByDate[date].push(comp);
 		});
@@ -962,7 +960,7 @@ exports.getHabitProgress = async (req, res) => {
 			graphData,
 			debug: {
 				habitsCount: habits.length,
-				completionsCount: relevantCompletions.length,
+				completionsCount: allCompletions.length,
 				currentClientDate: currentDate
 			}
 		});
