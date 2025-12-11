@@ -58,20 +58,18 @@ exports.create = async (req, res) => {
 		});
 	}
 };
+
 exports.list = async (req, res) => {
 	try {
 		let userId = crypto.decrypt(req.userId);
+		let timezone = req.body && req.body.timezone ? req.body.timezone : null;
+
 		let whereClause = {};
 
 		if (userId == 1) {
-			whereClause = {
-				isActive: "Y"
-			};
+			whereClause = { isActive: "Y" };
 		} else {
-			whereClause = {
-				isActive: "Y",
-				userId: [1, userId]
-			};
+			whereClause = { isActive: "Y", userId: [1, userId] };
 		}
 
 		// Get user creation date to calculate overall progress
@@ -79,13 +77,16 @@ exports.list = async (req, res) => {
 		const userCreatedAt = user ? new Date(user.createdAt) : new Date();
 
 		// Calculate days since user joined
-		const daysSinceUserJoined = Math.max(1, Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24)));
+		const daysSinceUserJoined = Math.max(
+			1,
+			Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24))
+		);
 
-		// Get today's date range (use the same timezone as your data)
-		const todayStart = new Date();
+		// Prepare fallback todayStart/todayEnd (server-local) in case timezone is NOT provided
+		let todayStart = new Date();
 		todayStart.setHours(0, 0, 0, 0);
 
-		const todayEnd = new Date();
+		let todayEnd = new Date();
 		todayEnd.setHours(23, 59, 59, 999);
 
 		// Get all active habits
@@ -95,51 +96,73 @@ exports.list = async (req, res) => {
 		});
 
 		// Filter only mandatory habits for progress calculation
-		const mandatoryHabits = habits.filter((habit) => habit.mandatory === "Y" || habit.mandatory === "true");
+		const mandatoryHabits = habits.filter(
+			(habit) => habit.mandatory === "Y" || habit.mandatory === "true"
+		);
 		const totalMandatoryHabits = mandatoryHabits.length;
+		const mandatoryHabitIds = mandatoryHabits.map((h) => h.id);
 
-		// Get all completions for mandatory habits by this user
+		// Get all completions for mandatory habits by this user (historical)
 		const allCompletions = await HabitCompletions.findAll({
 			where: {
-				habitId: mandatoryHabits.map((habit) => habit.id),
+				habitId: mandatoryHabitIds,
 				userId: userId,
 				status: "Completed"
 			}
 		});
 
-		// CORRECTED: Get today's completions - use createdAt instead of updatedAt
-		const todayCompletions = await HabitCompletions.findAll({
-			where: {
-				habitId: mandatoryHabits.map((habit) => habit.id),
-				userId: userId,
-				status: "Completed",
-				// Use createdAt to track when the habit was actually completed
-				createdAt: {
-					[Op.between]: [todayStart, todayEnd]
-				}
-			}
-		});
+		// TODAY logic:
+		// If timezone is provided in request -> use localDate approach
+		// Otherwise -> keep old behavior using createdAt between todayStart/todayEnd
+		let todayCompletionsRows = [];
+		let todayLocalDate = null;
+		let timezoneUsed = null;
+
+		if (timezone) {
+			// Use the provided timezone to compute localDate
+			timezoneUsed = moment.tz.zone(timezone) ? timezone : 'UTC';
+			todayLocalDate = moment().tz(timezoneUsed).format('YYYY-MM-DD');
+
+			todayCompletionsRows = await HabitCompletions.findAll({
+				where: {
+					habitId: mandatoryHabitIds,
+					userId: userId,
+					status: "Completed",
+					localDate: todayLocalDate
+				},
+				attributes: ['habitId']
+			});
+		} else {
+			// No timezone provided: use the original createdAt range on server local time
+			timezoneUsed = null;
+			todayCompletionsRows = await HabitCompletions.findAll({
+				where: {
+					habitId: mandatoryHabitIds,
+					userId: userId,
+					status: "Completed",
+					createdAt: {
+						[Op.between]: [todayStart, todayEnd]
+					}
+				},
+				attributes: ['habitId']
+			});
+		}
+
+		// Count unique habitIds completed today (avoid duplicates)
+		const uniqueTodayCompleted = new Set(todayCompletionsRows.map((r) => r.habitId));
+		const todayCompleted = uniqueTodayCompleted.size;
 
 		// Calculate progress metrics
 		const totalPossibleCompletions = totalMandatoryHabits * daysSinceUserJoined;
 		const totalCompleted = allCompletions.length;
 
-		// CORRECTED: Today's completed should be based on unique habit completions today
-		const todayCompleted = todayCompletions.length;
-		console.log(totalPossibleCompletions);
-		console.log(todayCompleted);
-		console.log(typeof totalPossibleCompletions);
-		console.log(typeof todayCompleted);
-
 		const overallPercentage =
 			totalPossibleCompletions > 0 ? Math.round((totalCompleted / totalPossibleCompletions) * 100) : 0;
 
-		// CORRECTED: Today's percentage should be based on mandatory habits count
 		const todayPercentage = totalMandatoryHabits > 0 ? Math.round((todayCompleted / totalMandatoryHabits) * 100) : 0;
 
 		encryptHelper(habits);
 
-		// Return only the progress summary, not embedded in each habit
 		return res.status(200).send({
 			message: "Habit progress summary",
 			data: {
@@ -152,7 +175,7 @@ exports.list = async (req, res) => {
 					},
 					today: {
 						completed: todayCompleted,
-						total: totalMandatoryHabits, // This should be 11, not 100
+						total: totalMandatoryHabits,
 						percentage: Math.min(todayPercentage, 100)
 					}
 				},
@@ -160,13 +183,15 @@ exports.list = async (req, res) => {
 					totalHabits: habits.length,
 					mandatoryHabits: totalMandatoryHabits,
 					daysSinceJoined: daysSinceUserJoined,
-					todayDate: new Date().toISOString().split("T")[0],
-					// Add debug info
+					todayDate: timezone ? todayLocalDate : new Date().toISOString().split("T")[0],
 					debug: {
-						todayCompletionsCount: todayCompletions.length,
-						todayStart: todayStart,
-						todayEnd: todayEnd,
-						mandatoryHabitIds: mandatoryHabits.map((h) => h.id)
+						timezoneProvided: !!timezone,
+						timezoneUsed: timezoneUsed,
+						todayLocalDate: todayLocalDate,
+						todayStart,
+						todayEnd,
+						todayCompletionsCount: todayCompletionsRows.length,
+						mandatoryHabitIds
 					}
 				}
 			}
@@ -177,6 +202,7 @@ exports.list = async (req, res) => {
 		});
 	}
 };
+
 
 // exports.updateStatus = async (req, res) => {
 // 	try {
