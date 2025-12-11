@@ -77,10 +77,7 @@ exports.list = async (req, res) => {
 		const userCreatedAt = user ? new Date(user.createdAt) : new Date();
 
 		// Calculate days since user joined
-		const daysSinceUserJoined = Math.max(
-			1,
-			Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24))
-		);
+		const daysSinceUserJoined = Math.max(1, Math.ceil((new Date() - userCreatedAt) / (1000 * 60 * 60 * 24)));
 
 		// Prepare fallback todayStart/todayEnd (server-local) in case timezone is NOT provided
 		let todayStart = new Date();
@@ -96,9 +93,7 @@ exports.list = async (req, res) => {
 		});
 
 		// Filter only mandatory habits for progress calculation
-		const mandatoryHabits = habits.filter(
-			(habit) => habit.mandatory === "Y" || habit.mandatory === "true"
-		);
+		const mandatoryHabits = habits.filter((habit) => habit.mandatory === "Y" || habit.mandatory === "true");
 		const totalMandatoryHabits = mandatoryHabits.length;
 		const mandatoryHabitIds = mandatoryHabits.map((h) => h.id);
 
@@ -120,8 +115,8 @@ exports.list = async (req, res) => {
 
 		if (timezone) {
 			// Use the provided timezone to compute localDate
-			timezoneUsed = moment.tz.zone(timezone) ? timezone : 'UTC';
-			todayLocalDate = moment().tz(timezoneUsed).format('YYYY-MM-DD');
+			timezoneUsed = moment.tz.zone(timezone) ? timezone : "UTC";
+			todayLocalDate = moment().tz(timezoneUsed).format("YYYY-MM-DD");
 
 			todayCompletionsRows = await HabitCompletions.findAll({
 				where: {
@@ -130,7 +125,7 @@ exports.list = async (req, res) => {
 					status: "Completed",
 					localDate: todayLocalDate
 				},
-				attributes: ['habitId']
+				attributes: ["habitId"]
 			});
 		} else {
 			// No timezone provided: use the original createdAt range on server local time
@@ -144,7 +139,7 @@ exports.list = async (req, res) => {
 						[Op.between]: [todayStart, todayEnd]
 					}
 				},
-				attributes: ['habitId']
+				attributes: ["habitId"]
 			});
 		}
 
@@ -202,7 +197,6 @@ exports.list = async (req, res) => {
 		});
 	}
 };
-
 
 // exports.updateStatus = async (req, res) => {
 // 	try {
@@ -553,18 +547,42 @@ exports.listv2 = async (req, res) => {
 			return total + parseFloat(habit.percentage || 0);
 		}, 0);
 
-		// FIXED: Get today's completions using database date function
-		const todayCompletions = await HabitCompletions.findAll({
-			where: {
-				habitId: mandatoryHabits.map((habit) => habit.id),
-				userId: userId,
-				status: "Completed",
-				// Use literal for proper date comparison
-				[Op.and]: [db.Sequelize.literal(`DATE(createdAt) = CURDATE()`)]
-			}
-		});
+		// === TIMEZONE AWARE: if timezone provided use localDate; otherwise keep original DB DATE(createdAt)=CURDATE() ===
+		const timezone = req.body && req.body.timezone ? req.body.timezone : null;
 
-		// Get all completions for mandatory habits
+		let todayCompletions = [];
+		let todayDateForSummary = new Date().toISOString().split("T")[0]; // default
+
+		if (timezone && moment.tz.zone(timezone)) {
+			// Valid timezone provided -> compute user's local date and query localDate column
+			const todayLocalDate = moment().tz(timezone).format("YYYY-MM-DD");
+			todayDateForSummary = todayLocalDate;
+
+			todayCompletions = await HabitCompletions.findAll({
+				where: {
+					habitId: mandatoryHabits.map((habit) => habit.id),
+					userId: userId,
+					status: "Completed",
+					localDate: todayLocalDate
+				}
+			});
+		} else {
+			// No timezone or invalid timezone -> keep existing behavior using DB date function
+			todayCompletions = await HabitCompletions.findAll({
+				where: {
+					habitId: mandatoryHabits.map((habit) => habit.id),
+					userId: userId,
+					status: "Completed",
+					// Use literal for proper date comparison on DB side (original behavior)
+					[Op.and]: [db.Sequelize.literal(`DATE(createdAt) = CURDATE()`)]
+				}
+			});
+
+			// keep server-local today date in summary (same as before)
+			todayDateForSummary = new Date().toISOString().split("T")[0];
+		}
+
+		// Get all completions for mandatory habits (historical)
 		const allCompletions = await HabitCompletions.findAll({
 			where: {
 				habitId: mandatoryHabits.map((habit) => habit.id),
@@ -646,7 +664,7 @@ exports.listv2 = async (req, res) => {
 					totalHabits: habits.length,
 					mandatoryHabits: totalMandatoryHabits,
 					daysSinceJoined: daysSinceUserJoined,
-					todayDate: new Date().toISOString().split("T")[0],
+					todayDate: todayDateForSummary,
 					habitPercentages: mandatoryHabits.map((habit) => ({
 						id: habit.id,
 						name: habit.name,
