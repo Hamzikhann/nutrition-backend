@@ -62,12 +62,12 @@ class Server {
 
 		// DB Sync
 		db.sequelize
-			.sync()
+			.authenticate()
 			.then(() => {
-				console.log("✅ Synced db.");
+				console.log("✅ DB connected (no sync).");
 			})
 			.catch((err) => {
-				console.log("❌ Failed to sync db: " + err);
+				console.log("❌ DB connection failed: " + err);
 			});
 	}
 
@@ -83,7 +83,7 @@ class Server {
 		console.log("🕐 Initializing cron jobs...");
 
 		// Method 1: Initialize using your CronJobs class
-		// CronJobs.init();
+		CronJobs.init();
 
 		// Method 2: Or initialize individual cron jobs manually
 		// if (process.env.CRON_JOBS_ENABLED === "true") {

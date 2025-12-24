@@ -56,63 +56,47 @@ class CronJobs {
 		try {
 			console.log("Starting trial user deactivation cron job...");
 
+			// Calculate cutoff date (3 days ago, start of day)
 			const threeDaysAgo = new Date();
 			threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 			threeDaysAgo.setHours(0, 0, 0, 0);
 
-			// FIXED: Remove the problematic UserPlan include condition
 			const expiredTrialUsers = await User.findAll({
 				where: {
 					activatedAt: {
 						[db.Sequelize.Op.lte]: threeDaysAgo
 					},
-					isActive: "Y"
-				},
-				include: [
-					{
-						model: UserPlan,
-						required: false // Just check if they have any UserPlan, don't filter by id
-					},
-					{
-						model: Role,
-						where: {
-							title: {
-								[db.Sequelize.Op.notIn]: ["Administrator", "Subadmin"]
-							}
-						}
+					isActive: "Y",
+					isdeleted: "N",
+					roleId: 2,
+					// 🔑 CRITICAL FIX: users with NO plans
+					id: {
+						[db.Sequelize.Op.notIn]: db.Sequelize.literal(`(SELECT DISTINCT userId FROM UserPlans)`)
 					}
-				]
+				}
 			});
 
-			console.log(`Found ${expiredTrialUsers.length} users with expired trials`);
+			console.log(`Found ${expiredTrialUsers.length} trial users eligible for deactivation`);
 
-			// FIXED: Filter in JavaScript to find users WITHOUT UserPlans
-			const usersWithoutPlans = expiredTrialUsers.filter((user) => !user.UserPlans || user.UserPlans.length === 0);
+			if (!expiredTrialUsers.length) return;
 
-			console.log(`Found ${usersWithoutPlans.length} trial users without plans to deactivate`);
+			for (const user of expiredTrialUsers) {
+				await user.update({
+					isActive: "N"
+				});
 
-			const deactivationPromises = usersWithoutPlans.map(async (user) => {
-				// Deactivate the user
-				await user.update({ isActive: "N" });
-
-				// Send notification about trial expiration
+				// OPTIONAL: notification
 				await Notifications.sendFcmNotification(
 					user.id,
 					"Trial Period Ended",
-					"Your 3-day trial period has ended. Upgrade to a premium plan to continue accessing all features.",
-					"trial_expired",
-					{
-						deactivationDate: new Date().toISOString(),
-						reason: "trial_ended",
-						upgradeUrl: "/plans"
-					}
+					"Your 3-day free trial has ended. Upgrade to continue.",
+					"trial_expired"
 				);
 
-				console.log(`Deactivated trial user ${user.email} and sent notification`);
-			});
+				console.log(`Deactivated trial user: ${user.email}`);
+			}
 
-			await Promise.all(deactivationPromises);
-			console.log(`Successfully deactivated ${usersWithoutPlans.length} trial users and sent notifications`);
+			console.log(`Successfully deactivated ${expiredTrialUsers.length} trial users`);
 		} catch (error) {
 			console.error("Error in trial user deactivation cron job:", error);
 		}
@@ -127,7 +111,9 @@ class CronJobs {
 
 			const usersWithPlans = await User.findAll({
 				where: {
-					isActive: "Y"
+					isActive: "Y",
+					isdeleted: "N",
+					roleId: 2
 				},
 				include: [
 					{
@@ -140,18 +126,18 @@ class CronJobs {
 								required: true
 							}
 						]
-					},
-					{
-						model: Role,
-						where: {
-							title: {
-								[db.Sequelize.Op.notIn]: ["Administrator", "Subadmin"]
-							}
-						}
 					}
+					// {
+					// 	model: Role,
+					// 	where: {
+					// 		title: {
+					// 			[db.Sequelize.Op.notIn]: ["Administrator", "Subadmin"]
+					// 		}
+					// 	}
+					// }
 				]
 			});
-			console.log(usersWithPlans);
+			// console.log(usersWithPlans);
 			let expiredUsersCount = 0;
 			const deactivationPromises = [];
 			console.log(`Found ${usersWithPlans.length} users with plans to check`);
