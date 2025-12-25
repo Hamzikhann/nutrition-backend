@@ -293,7 +293,8 @@ exports.getUserProgress = async (req, res) => {
 					totalWorkouts: 0,
 					completedWorkouts: 0,
 					completionPercentage: 0,
-					habits: []
+					habits: [],
+					dailyHabitStatus: []
 				}
 			});
 		}
@@ -346,30 +347,155 @@ exports.getUserProgress = async (req, res) => {
 		// completion percentage (guard divide by zero)
 		const completionPercentage = totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0;
 
-		// Get habits mandatory and active, but only mark completed if the user has a completion record
-		const userHabits = await Habits.findAll({
-			where: { mandatory: "true", isActive: "Y" },
-			include: [
-				{
-					model: HabitsCompletions,
-					required: false,
-					where: { userId } // only completions by this user
-				}
-			]
+		// Get habits that are mandatory and active
+		const allHabits = await Habits.findAll({
+			where: { mandatory: "true", isActive: "Y" }
 		});
 
-		const habits = userHabits.map((uh) => ({
-			name: uh.name || (uh.habit && uh.habit.name) || "Unnamed Habit",
-			completed: Array.isArray(uh.habitsCompletions) && uh.habitsCompletions.length > 0
-		}));
+		// Get all habit completions for this user
+		const habitCompletions = await HabitsCompletions.findAll({
+			where: { userId }
+		});
+
+		// Helper function to convert date to string
+		const getDateString = (dateValue) => {
+			if (!dateValue) return null;
+
+			if (dateValue instanceof Date) {
+				return dateValue.toISOString().split("T")[0];
+			}
+
+			// If it's a string, convert to Date first
+			if (typeof dateValue === "string") {
+				return new Date(dateValue).toISOString().split("T")[0];
+			}
+
+			return null;
+		};
+
+		// Today's date
+		const today = new Date();
+		const todayStr = getDateString(today);
+
+		// Group completions by habitId and date
+		const habitCompletionMap = {};
+		// Also track daily completion status
+		const dailyHabitCompletionMap = {}; // {date: {habitId: true}}
+
+		habitCompletions.forEach((completion) => {
+			const habitId = completion.habitId;
+			const dateStr = getDateString(completion.createdAt);
+
+			if (!dateStr) return;
+
+			// Store in habit completion map
+			if (!habitCompletionMap[habitId]) {
+				habitCompletionMap[habitId] = new Set();
+			}
+			habitCompletionMap[habitId].add(dateStr);
+
+			// Store in daily habit completion map
+			if (!dailyHabitCompletionMap[dateStr]) {
+				dailyHabitCompletionMap[dateStr] = {};
+			}
+			dailyHabitCompletionMap[dateStr][habitId] = true;
+		});
+
+		// Calculate habit progress
+		const habits = allHabits.map((habit) => {
+			const completionsForHabit = habitCompletionMap[habit.id] || new Set();
+			const completedDays = completionsForHabit.size;
+
+			// Calculate total possible days (from user registration to today, or plan duration)
+			const userRegistrationDate = userPlan.createdAt || userPlan.startDate;
+			const startDate = new Date(userRegistrationDate);
+			const todayDate = new Date();
+			const totalPossibleDays = Math.ceil((todayDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+			// Cap at plan duration if needed
+			const totalDays = Math.min(totalPossibleDays, durationWeeks * 7);
+
+			const habitCompletionPercentage = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
+
+			return {
+				id: habit.id,
+				name: habit.name || "Unnamed Habit",
+				completedDays,
+				totalDays: totalDays,
+				completionPercentage: habitCompletionPercentage,
+				isCompletedToday: todayStr ? dailyHabitCompletionMap[todayStr]?.[habit.id] || false : false
+			};
+		});
+
+		// Calculate overall habit progress
+		const totalHabitDays = habits.reduce((sum, habit) => sum + habit.totalDays, 0);
+		const totalCompletedHabitDays = habits.reduce((sum, habit) => sum + habit.completedDays, 0);
+		const overallHabitCompletionPercentage =
+			totalHabitDays > 0 ? Math.round((totalCompletedHabitDays / totalHabitDays) * 100) : 0;
+
+		// Get daily habit completion status for recent days (e.g., last 7 days)
+		const last7Days = [];
+		for (let i = 6; i >= 0; i--) {
+			const date = new Date();
+			date.setDate(date.getDate() - i);
+			const dateStr = getDateString(date);
+
+			if (!dateStr) continue;
+
+			const dailyCompletions = dailyHabitCompletionMap[dateStr] || {};
+			const completedHabits = Object.keys(dailyCompletions).length;
+			const totalHabits = allHabits.length;
+			const dailyCompletionPercentage = totalHabits > 0 ? Math.round((completedHabits / totalHabits) * 100) : 0;
+
+			last7Days.push({
+				date: dateStr,
+				completedHabits,
+				totalHabits,
+				completionPercentage: dailyCompletionPercentage,
+				isToday: i === 0
+			});
+		}
+
+		// Today's habit status
+		const todayHabitStatus = todayStr
+			? {
+					date: todayStr,
+					completedHabits: Object.keys(dailyHabitCompletionMap[todayStr] || {}).length,
+					totalHabits: allHabits.length,
+					completionPercentage:
+						allHabits.length > 0
+							? Math.round((Object.keys(dailyHabitCompletionMap[todayStr] || {}).length / allHabits.length) * 100)
+							: 0,
+					habits: allHabits.map((habit) => ({
+						id: habit.id,
+						name: habit.name || "Unnamed Habit",
+						completed: dailyHabitCompletionMap[todayStr]?.[habit.id] || false
+					}))
+			  }
+			: null;
 
 		return res.status(200).send({
 			message: "User progress retrieved successfully",
 			data: {
+				// Workout progress
 				totalWorkouts,
 				completedWorkouts,
 				completionPercentage,
-				habits
+
+				// Habit progress
+				habits,
+				overallHabitProgress: {
+					completedDays: totalCompletedHabitDays,
+					totalDays: totalHabitDays,
+					completionPercentage: overallHabitCompletionPercentage
+				},
+
+				// Daily habit tracking
+				dailyHabitStatus: {
+					today: todayHabitStatus,
+					last7Days: last7Days,
+					streak: calculateHabitStreak(dailyHabitCompletionMap, todayStr) // Add streak calculation
+				}
 			}
 		});
 	} catch (err) {
@@ -380,6 +506,29 @@ exports.getUserProgress = async (req, res) => {
 	}
 };
 
+// Helper function to calculate habit streak
+function calculateHabitStreak(dailyHabitCompletionMap, todayStr) {
+	if (!todayStr) return 0;
+
+	const todayDate = new Date(todayStr);
+	let streak = 0;
+	let currentDate = new Date(todayDate);
+
+	// Check consecutive days back from today
+	while (true) {
+		const dateStr = currentDate.toISOString().split("T")[0];
+
+		// If user completed at least one habit on this day
+		if (dailyHabitCompletionMap[dateStr] && Object.keys(dailyHabitCompletionMap[dateStr]).length > 0) {
+			streak++;
+			currentDate.setDate(currentDate.getDate() - 1); // Go to previous day
+		} else {
+			break; // Streak broken
+		}
+	}
+
+	return streak;
+}
 exports.updateProfile = async (req, res) => {
 	try {
 		const joiSchema = Joi.object({
