@@ -1034,7 +1034,14 @@ function convertDurationToWeeks(duration) {
 exports.getHabitProgress = async (req, res) => {
 	try {
 		const { timeZone = "Asia/Karachi" } = req.body;
-		const userId = crypto.decrypt(req.userId);
+		let userId = "";
+		const flag = req.body.flag;
+
+		if (flag) {
+			userId = crypto.decrypt(req.body.userId);
+		} else {
+			userId = crypto.decrypt(req.userId);
+		}
 
 		const user = await Users.findByPk(userId);
 		if (!user) {

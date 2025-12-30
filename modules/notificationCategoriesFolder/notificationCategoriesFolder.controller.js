@@ -148,9 +148,6 @@ const deleteFolder = async (req, res) => {
 	}
 };
 
-// Remove the habit-specific conditions from the database query
-// We'll handle these filters in post-processing like the progress filters
-
 const getUsersByCategories = async (req, res) => {
 	try {
 		const { categories } = req.body;
@@ -175,60 +172,11 @@ const getUsersByCategories = async (req, res) => {
 			});
 		}
 
-		let whereConditions = {};
-		let orConditions = [];
-
-		// Handle mutually exclusive user status categories with OR logic
-		const statusCategories = categoriesArray.filter(
-			(cat) => cat === "Inactive users" || cat === "Active users" || cat === "Trial Users"
-		);
-
-		if (statusCategories.length > 0) {
-			const statusConditions = [];
-
-			for (const category of statusCategories) {
-				switch (category) {
-					case "Inactive users":
-						statusConditions.push({ isActive: "N" });
-						break;
-					case "Active users":
-						statusConditions.push({ isActive: "Y" });
-						break;
-					case "Trial Users":
-						statusConditions.push({
-							"$userPlans.plan.isFree$": "Y"
-						});
-						break;
-				}
-			}
-
-			if (statusConditions.length > 0) {
-				orConditions.push({ [Op.or]: statusConditions });
-			}
-		}
-
-		// Check if we have any filters that require post-processing
-		const hasProgressFilter = categoriesArray.some(
-			(cat) => cat.includes("Progress less than") || cat.includes("Progress more than")
-		);
-
-		const hasHabitFilter = categoriesArray.some(
-			(cat) => cat === "User not doing workout" || cat === "User not posting meals"
-		);
-
-		// Build final where conditions
-		if (orConditions.length > 0) {
-			whereConditions = {
-				[Op.and]: [{ isdeleted: "N" }, { [Op.or]: orConditions }]
-			};
-		} else {
-			whereConditions = {
-				isdeleted: "N"
-			};
-		}
-
+		// Fetch users with all required data in a single query
 		const users = await db.users.findAll({
-			where: whereConditions,
+			where: {
+				isdeleted: "N"
+			},
 			include: [
 				{
 					model: db.habits,
@@ -260,16 +208,39 @@ const getUsersByCategories = async (req, res) => {
 			attributes: ["id", "firstName", "lastName", "email", "phoneNo", "isActive", "createdAt"]
 		});
 
-		// Filter users based on progress and habit criteria if needed
-		let filteredUsers = users;
-		if (hasProgressFilter || hasHabitFilter) {
-			filteredUsers = await filterUsersByProgressAndHabits(users, categoriesArray);
-		}
+		// Calculate progress for each user once (cache it)
+		const usersWithProgress = users.map((user) => {
+			const overallProgress = calculateOverallProgress(user);
+			const workoutProgress = calculateSpecificHabitProgress(user, ["workout", "exercise"]);
+			const mealProgress = calculateSpecificHabitProgress(user, ["meal", "food", "breakfast", "lunch", "dinner"]);
+			const isTrialUser = checkIfTrialUser(user);
 
+			return {
+				...user.toJSON(),
+				overallProgress,
+				workoutProgress,
+				mealProgress,
+				isTrialUser
+			};
+		});
+
+		// Filter users based on categories (OR logic between categories)
+		const filteredUsers = usersWithProgress.filter((user) => {
+			// If multiple categories, user should match AT LEAST ONE
+			if (categoriesArray.length > 1) {
+				return categoriesArray.some((category) => userMatchesCategory(user, category));
+			}
+			// If single category, user should match it
+			return userMatchesCategory(user, categoriesArray[0]);
+		});
+
+		// Encrypt and return
 		encryptHelper(filteredUsers);
 		res.status(200).json({
 			success: true,
-			data: filteredUsers
+			data: filteredUsers,
+			count: filteredUsers.length,
+			message: `Found ${filteredUsers.length} users matching the criteria`
 		});
 	} catch (error) {
 		console.error("Error fetching users by categories:", error);
@@ -280,132 +251,162 @@ const getUsersByCategories = async (req, res) => {
 	}
 };
 
-// Helper function to calculate and filter by progress and specific habits
-async function filterUsersByProgressAndHabits(users, categoriesArray) {
-	const progressCategories = categoriesArray.filter(
-		(cat) => cat.includes("Progress less than") || cat.includes("Progress more than")
-	);
+// Helper function to check if user is a trial user
+function checkIfTrialUser(user) {
+	if (!user.userPlans || user.userPlans.length === 0) return false;
 
-	const habitCategories = categoriesArray.filter(
-		(cat) => cat === "User not doing workout" || cat === "User not posting meals"
-	);
+	// Find the current active plan
+	const currentPlan = user.userPlans.find((up) => up.isActive === "Y");
+	if (!currentPlan || !currentPlan.plan) return false;
 
-	if (progressCategories.length === 0 && habitCategories.length === 0) return users;
+	return currentPlan.plan.isFree === "Y";
+}
 
-	return users.filter((user) => {
-		// Check progress filters
-		if (progressCategories.length > 0) {
-			const overallProgress = calculateOverallProgress(user);
-			let progressMatch = false;
+// Check if a user matches a specific category
+function userMatchesCategory(user, category) {
+	// For "Inactive users" category, we only check isActive condition
+	if (category === "Inactive users") {
+		return user.isActive === "N";
+	}
 
-			for (const category of progressCategories) {
-				if (category.includes("Progress less than 50") && overallProgress < 50) {
-					progressMatch = true;
-				}
-				if (category.includes("Progress less than 70") && overallProgress < 70) {
-					progressMatch = true;
-				}
-				if (category.includes("Progress more than 90") && overallProgress > 90) {
-					progressMatch = true;
-				}
-			}
+	// For all other categories, user must be active (isActive: "Y")
+	if (user.isActive !== "Y") {
+		return false;
+	}
 
-			if (progressCategories.length > 0 && !progressMatch) {
-				return false;
-			}
-		}
+	switch (category) {
+		case "Active users":
+			return true; // Already filtered by isActive: "Y"
 
-		// Check habit-specific filters
-		if (habitCategories.length > 0) {
-			let habitMatch = false;
+		case "Trial Users":
+			return user.isTrialUser;
 
-			for (const category of habitCategories) {
-				let habitType;
-				if (category === "User not doing workout") {
-					habitType = "workout";
-				} else if (category === "User not posting meals") {
-					habitType = "meal";
-				}
+		case "Progress less than 50":
+			return user.overallProgress < 50;
 
-				if (habitType) {
-					const habitProgress = calculateHabitProgress(user, habitType);
-					if (habitProgress < 50) {
-						habitMatch = true;
-					}
-				}
-			}
+		case "Progress less than 70":
+			return user.overallProgress < 70;
 
-			if (habitCategories.length > 0 && !habitMatch) {
-				return false;
-			}
-		}
+		case "Progress more than 90":
+			return user.overallProgress > 90;
 
-		return true;
-	});
+		case "User not doing workout":
+			// Check for workout-related habits based on your data
+			if (!user.habits || user.habits.length === 0) return true;
+
+			// Look for workout-related habit names
+			const workoutKeywords = ["workout", "exercise"];
+			const hasWorkoutHabit = user.habits.some((habit) =>
+				workoutKeywords.some((keyword) => habit.name.toLowerCase().includes(keyword.toLowerCase()))
+			);
+
+			// If no workout habit exists, consider as "not doing workout"
+			if (!hasWorkoutHabit) return true;
+
+			// If workout habit exists, check completion percentage
+			return user.workoutProgress < 50;
+
+		case "User not posting meals":
+			// Check for meal-related habits based on your data
+			if (!user.habits || user.habits.length === 0) return true;
+
+			// Look for meal-related habit names
+			const mealKeywords = ["meal", "breakfast", "dinner", "food", "lunch"];
+			const hasMealHabit = user.habits.some((habit) =>
+				mealKeywords.some((keyword) => habit.name.toLowerCase().includes(keyword.toLowerCase()))
+			);
+
+			// If no meal habit exists, consider as "not posting meals"
+			if (!hasMealHabit) return true;
+
+			// If meal habit exists, check completion percentage
+			return user.mealProgress < 50;
+
+		default:
+			return false;
+	}
 }
 
 // Function to calculate overall progress for all mandatory habits
+// Function to calculate overall progress for all mandatory habits
 function calculateOverallProgress(user) {
-	if (!user.habits || user.habits.length === 0) return 0;
+	try {
+		if (!user.habits || user.habits.length === 0) return 0;
 
-	const mandatoryHabits = user.habits.filter((habit) => habit.mandatory === "Y");
-	if (mandatoryHabits.length === 0) return 0;
+		// Filter only mandatory habits
+		const mandatoryHabits = user.habits.filter((habit) => habit.mandatory === "Y");
+		if (mandatoryHabits.length === 0) return 0;
 
-	const userCreatedAt = new Date(user.createdAt);
-	const today = new Date();
-	const daysSinceJoin = Math.max(1, Math.ceil((today - userCreatedAt) / (1000 * 60 * 60 * 24)));
+		const userCreatedAt = new Date(user.createdAt);
+		const today = new Date();
+		const daysSinceJoin = Math.max(1, Math.ceil((today - userCreatedAt) / (1000 * 60 * 60 * 24)));
 
-	let totalExpectedCompletions = 0;
-	let totalActualCompletions = 0;
+		let totalExpectedCompletions = 0;
+		let totalActualCompletions = 0;
 
-	mandatoryHabits.forEach((habit) => {
-		totalExpectedCompletions += daysSinceJoin;
+		mandatoryHabits.forEach((habit) => {
+			totalExpectedCompletions += daysSinceJoin;
 
-		if (user.habitsCompletions) {
-			const habitCompletions = user.habitsCompletions.filter(
-				(completion) => completion.habitId === habit.id && completion.status === "Completed"
-			);
-			totalActualCompletions += habitCompletions.length;
-		}
-	});
+			if (user.habitsCompletions) {
+				const habitCompletions = user.habitsCompletions.filter(
+					(completion) => completion.habitId === habit.id && completion.status === "Completed"
+				);
+				totalActualCompletions += habitCompletions.length;
+			}
+		});
 
-	if (totalExpectedCompletions === 0) return 0;
+		if (totalExpectedCompletions === 0) return 0;
 
-	const progressPercentage = (totalActualCompletions / totalExpectedCompletions) * 100;
-	return Math.min(100, Math.round(progressPercentage));
+		const progressPercentage = (totalActualCompletions / totalExpectedCompletions) * 100;
+		return Math.min(100, Math.round(progressPercentage));
+	} catch (error) {
+		console.error("Error calculating overall progress:", error);
+		return 0;
+	}
 }
 
-// Function to calculate progress for specific habit types (workout/meal)
-function calculateHabitProgress(user, habitType) {
-	if (!user.habits || user.habits.length === 0) return 0;
+// Function to calculate progress for specific habit keywords
+function calculateSpecificHabitProgress(user, keywords) {
+	try {
+		if (!user.habits || user.habits.length === 0) return 0;
 
-	// Find habits that match the type (workout or meal)
-	const matchingHabits = user.habits.filter((habit) => habit.name.toLowerCase().includes(habitType.toLowerCase()));
+		// Find MANDATORY habits that contain any of the keywords
+		const matchingHabits = user.habits.filter((habit) => {
+			// Only consider mandatory habits
+			if (habit.mandatory !== "Y") return false;
 
-	if (matchingHabits.length === 0) return 0;
+			const habitName = habit.name.toLowerCase();
+			return keywords.some((keyword) => habitName.includes(keyword.toLowerCase()));
+		});
 
-	const userCreatedAt = new Date(user.createdAt);
-	const today = new Date();
-	const daysSinceJoin = Math.max(1, Math.ceil((today - userCreatedAt) / (1000 * 60 * 60 * 24)));
+		if (matchingHabits.length === 0) return 0;
 
-	let totalExpectedCompletions = 0;
-	let totalActualCompletions = 0;
+		const userCreatedAt = new Date(user.createdAt);
+		const today = new Date();
+		const daysSinceJoin = Math.max(1, Math.ceil((today - userCreatedAt) / (1000 * 60 * 60 * 24)));
 
-	matchingHabits.forEach((habit) => {
-		totalExpectedCompletions += daysSinceJoin;
+		let totalExpectedCompletions = 0;
+		let totalActualCompletions = 0;
 
-		if (user.habitsCompletions) {
-			const habitCompletions = user.habitsCompletions.filter(
-				(completion) => completion.habitId === habit.id && completion.status === "Completed"
-			);
-			totalActualCompletions += habitCompletions.length;
-		}
-	});
+		matchingHabits.forEach((habit) => {
+			totalExpectedCompletions += daysSinceJoin;
 
-	if (totalExpectedCompletions === 0) return 0;
+			if (user.habitsCompletions) {
+				const habitCompletions = user.habitsCompletions.filter(
+					(completion) => completion.habitId === habit.id && completion.status === "Completed"
+				);
+				totalActualCompletions += habitCompletions.length;
+			}
+		});
 
-	const progressPercentage = (totalActualCompletions / totalExpectedCompletions) * 100;
-	return Math.min(100, Math.round(progressPercentage));
+		if (totalExpectedCompletions === 0) return 0;
+
+		const progressPercentage = (totalActualCompletions / totalExpectedCompletions) * 100;
+		return Math.min(100, Math.round(progressPercentage));
+	} catch (error) {
+		console.error("Error calculating specific habit progress:", error);
+		return 0;
+	}
 }
 
 module.exports = {
