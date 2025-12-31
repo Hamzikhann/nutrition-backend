@@ -79,7 +79,7 @@ class CronJobs {
 					roleId: 2,
 					// 🔑 CRITICAL FIX: users with NO plans
 					id: {
-						[db.Sequelize.Op.notIn]: db.Sequelize.literal(`(SELECT DISTINCT userId FROM UserPlans)`)
+						[db.Sequelize.Op.notIn]: db.Sequelize.literal(`(SELECT DISTINCT userId FROM userPlans)`)
 					}
 				}
 			});
