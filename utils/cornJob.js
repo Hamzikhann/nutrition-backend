@@ -14,15 +14,15 @@ class CronJobs {
 		cron.schedule("*/10 * * * * *", CronJobs.testCron);
 
 		// Trial User Deactivation - Every 30 seconds
-		cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
-		// cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
+		// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
+		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
 
 		// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
-		cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
-		// cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
+		// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
+		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
 
 		// BMR Reduction - Run daily at 12:15 AM (after midnight)
-		cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
+		// cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
 
 		console.log("All cron jobs initialized");
 	}
@@ -89,17 +89,17 @@ class CronJobs {
 			if (!expiredTrialUsers.length) return;
 
 			for (const user of expiredTrialUsers) {
-				await user.update({
-					isActive: "N"
-				});
+				// await user.update({
+				// 	isActive: "N"
+				// });
 
-				// OPTIONAL: notification
-				await Notifications.sendFcmNotification(
-					user.id,
-					"Trial Period Ended",
-					"Your 3-day free trial has ended. Upgrade to continue.",
-					"trial_expired"
-				);
+				// // OPTIONAL: notification
+				// await Notifications.sendFcmNotification(
+				// 	user.id,
+				// 	"Trial Period Ended",
+				// 	"Your 3-day free trial has ended. Upgrade to continue.",
+				// 	"trial_expired"
+				// );
 
 				console.log(`Deactivated trial user: ${user.email}`);
 			}
@@ -156,27 +156,27 @@ class CronJobs {
 				const expiryDate = CronJobs.calculateExpiryDate(user.activatedAt, planDuration);
 
 				if (expiryDate < today) {
-					deactivationPromises.push(async () => {
-						// Deactivate the user
-						await user.update({ isActive: "N" });
+					// deactivationPromises.push(async () => {
+					// 	// Deactivate the user
+					// 	await user.update({ isActive: "N" });
 
-						// Send notification about plan expiration
-						await Notifications.sendFcmNotification(
-							user.id,
-							"Plan Expired",
-							`Your ${planName} has expired. Renew your subscription to continue accessing all features.`,
-							"plan_expired",
-							{
-								deactivationDate: new Date().toISOString(),
-								reason: "plan_expired",
-								planName: planName,
-								planDuration: planDuration,
-								renewUrl: "/plans" // You can add your renew URL here
-							}
-						);
+					// 	// Send notification about plan expiration
+					// 	await Notifications.sendFcmNotification(
+					// 		user.id,
+					// 		"Plan Expired",
+					// 		`Your ${planName} has expired. Renew your subscription to continue accessing all features.`,
+					// 		"plan_expired",
+					// 		{
+					// 			deactivationDate: new Date().toISOString(),
+					// 			reason: "plan_expired",
+					// 			planName: planName,
+					// 			planDuration: planDuration,
+					// 			renewUrl: "/plans" // You can add your renew URL here
+					// 		}
+					// 	);
 
-						console.log(`Deactivated user ${user.email} (plan expired) and sent notification`);
-					});
+					// 	console.log(`Deactivated user ${user.email} (plan expired) and sent notification`);
+					// });
 					expiredUsersCount++;
 				}
 			}
