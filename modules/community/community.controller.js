@@ -311,7 +311,6 @@ exports.listPosts = async (req, res) => {
 		const postIds = posts
 			.flatMap((category) => category?.communityPosts?.map((post) => post.id) || [])
 			.filter((id) => id); // Remove any undefined/null IDs
-		console.log(postIds);
 		// Single query to get counts for all posts (only if there are posts)
 		let countMap = {};
 		if (postIds.length > 0) {
@@ -324,14 +323,12 @@ exports.listPosts = async (req, res) => {
 				group: ["communityPostId"],
 				raw: true
 			});
-			console.log(commentCounts);
 			// Create a lookup map
 			countMap = commentCounts.reduce((acc, item) => {
 				acc[item.communityPostId] = item.count;
 				return acc;
 			}, {});
 		}
-		console.log(countMap);
 		// Assign counts to posts - with proper null checks
 		posts?.forEach((category) => {
 			// Check if category and CommunityPosts exist and is an array

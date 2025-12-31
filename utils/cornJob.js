@@ -9,6 +9,10 @@ const Role = db.roles;
 
 class CronJobs {
 	static init() {
+		//testCron();
+		// Cron Jobs
+		cron.schedule("*/10 * * * * *", CronJobs.testCron);
+
 		// Trial User Deactivation - Every 30 seconds
 		cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
 		// cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
@@ -21,6 +25,10 @@ class CronJobs {
 		cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
 
 		console.log("All cron jobs initialized");
+	}
+
+	static testCron() {
+		console.log("Cron job executed");
 	}
 
 	static calculateExpiryDate(activatedAt, duration) {

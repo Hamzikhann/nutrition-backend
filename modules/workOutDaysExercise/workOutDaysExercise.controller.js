@@ -373,14 +373,12 @@ exports.updateStatus = async (req, res) => {
 					userId: crypto.decrypt(req.userId)
 				}
 			});
-			console.log(crypto.decrypt(req.userId));
 
 			if (findWorkoutCompleted) {
 				return res.status(400).send({
 					message: "Work out day already completed"
 				});
 			}
-			console.log(crypto.decrypt(req.userId));
 			let updateWorkoutCompleted = await WorkoutsCompletions.create({
 				status: "Completed",
 				userId: crypto.decrypt(req.userId), //req.userId
