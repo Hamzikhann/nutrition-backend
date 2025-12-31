@@ -496,9 +496,14 @@ exports.update = async (req, res) => {
 
 exports.listv2 = async (req, res) => {
 	try {
-		let userId = crypto.decrypt(req.userId);
+		let userId;
 		let whereClause = {};
 		let whereClauseCompletions = {};
+		if (req.body?.userId) {
+			userId = crypto.decrypt(req.body.userId);
+		} else {
+			userId = crypto.decrypt(req.userId);
+		}
 
 		if (userId == 1) {
 			whereClause = {
