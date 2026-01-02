@@ -223,10 +223,15 @@ class CronJobs {
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 
-			// Get all active users (excluding admins/subadmins)
+			const MIN_BMR = 1300;
+
+			// Get all active users (excluding admins/subadmins) with BMR > 1300
 			const activeUsers = await User.findAll({
 				where: {
-					isActive: "Y"
+					isActive: "Y",
+					bmr: {
+						[db.Sequelize.Op.gt]: MIN_BMR
+					}
 				},
 				include: [
 					{
@@ -251,15 +256,19 @@ class CronJobs {
 
 				referenceDate.setHours(0, 0, 0, 0);
 
-				// Calculate days since last reduction (or since creation)
 				const daysSinceReduction = Math.floor((today - referenceDate) / (1000 * 60 * 60 * 24));
 
-				// Check if 30 days have passed
 				if (daysSinceReduction >= 30) {
-					// Calculate how many 30-day cycles have passed
 					const cyclesPassed = Math.floor(daysSinceReduction / 30);
 					const totalReduction = cyclesPassed * 100;
-					const newBmr = Math.max(0, (user.bmr || 0) - totalReduction);
+
+					// Ensure BMR never goes below 1300
+					const newBmr = Math.max(MIN_BMR, user.bmr - totalReduction);
+
+					// If no actual reduction is possible, skip update
+					if (newBmr === user.bmr) {
+						continue;
+					}
 
 					updatePromises.push(
 						user.update({
@@ -267,31 +276,15 @@ class CronJobs {
 							lastBmrReductionDate: today
 						})
 					);
+
 					bmrUpdatedCount++;
 
-					console.log(
-						`Reduced BMR for user ${user.email} by ${totalReduction} (${cyclesPassed} cycles of 30 days): ${user.bmr} → ${newBmr}`
-					);
-
-					// Send notification about BMR reduction
-					// if (cyclesPassed > 0) {
-					// 	await Notifications.sendFcmNotification(
-					// 		user.id,
-					// 		"BMR Updated",
-					// 		`Your BMR has been adjusted by ${totalReduction} calories as part of your monthly progress update.`,
-					// 		"bmr_updated",
-					// 		{
-					// 			oldBmr: user.bmr,
-					// 			newBmr: newBmr,
-					// 			reductionAmount: totalReduction,
-					// 			updateDate: today.toISOString()
-					// 		}
-					// 	);
-					// }
+					console.log(`Reduced BMR for ${user.email}: ${user.bmr} → ${newBmr} (${totalReduction} reduction)`);
 				}
 			}
 
 			await Promise.all(updatePromises);
+
 			console.log(`Successfully updated BMR for ${bmrUpdatedCount} users`);
 		} catch (error) {
 			console.error("Error in BMR reduction cron job:", error);
