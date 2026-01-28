@@ -8,51 +8,51 @@ const Plan = db.plans;
 const Role = db.roles;
 
 class CronJobs {
-	// static init() {
-	// 	//testCron();
-	// 	// Cron Jobs
-	// 	cron.schedule("*/10 * * * * *", CronJobs.testCron);
-
-	// 	// Trial User Deactivation - Every 30 seconds
-	// 	// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
-	// 	cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
-
-	// 	// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
-	// 	// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
-	// 	cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
-
-	// 	// BMR Reduction - Run daily at 12:15 AM (after midnight)
-	// 	// cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
-
-	// 	console.log("All cron jobs initialized");
-	// }
-
 	static init() {
-		console.log("🕐 Initializing cron jobs...");
+		//testCron();
+		// Cron Jobs
+		cron.schedule("*/10 * * * * *", CronJobs.testCron);
 
-		// 🟢 Trial User Deactivation
-		// Runs DAILY at 12:05 AM
-		cron.schedule("5 0 * * *", async () => {
-			console.log("⏰ Trial deactivation cron triggered");
-			await CronJobs.deactivateExpiredTrials();
-		});
+		// Trial User Deactivation - Every 30 seconds
+		// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
+		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
 
-		// 🟢 Plan User Deactivation
-		// Runs DAILY at 12:10 AM
-		cron.schedule("10 0 * * *", async () => {
-			console.log("⏰ Plan deactivation cron triggered");
-			await CronJobs.deactivateExpiredPlans();
-		});
+		// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
+		// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
+		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
 
-		// 🟢 BMR Monthly Reduction
-		// Runs DAILY at 12:15 AM
-		cron.schedule("15 0 * * *", async () => {
-			console.log("⏰ BMR reduction cron triggered");
-			await CronJobs.reduceBmrMonthly();
-		});
+		// BMR Reduction - Run daily at 12:15 AM (after midnight)
+		// cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
 
-		console.log("✅ All cron jobs initialized (after 12:00 AM)");
+		console.log("All cron jobs initialized");
 	}
+
+	// static init() {
+	// 	console.log("🕐 Initializing cron jobs...");
+
+	// 	// 🟢 Trial User Deactivation
+	// 	// Runs DAILY at 12:05 AM
+	// 	cron.schedule("5 0 * * *", async () => {
+	// 		console.log("⏰ Trial deactivation cron triggered");
+	// 		await CronJobs.deactivateExpiredTrials();
+	// 	});
+
+	// 	// 🟢 Plan User Deactivation
+	// 	// Runs DAILY at 12:10 AM
+	// 	cron.schedule("10 0 * * *", async () => {
+	// 		console.log("⏰ Plan deactivation cron triggered");
+	// 		await CronJobs.deactivateExpiredPlans();
+	// 	});
+
+	// 	// 🟢 BMR Monthly Reduction
+	// 	// Runs DAILY at 12:15 AM
+	// 	cron.schedule("15 0 * * *", async () => {
+	// 		console.log("⏰ BMR reduction cron triggered");
+	// 		await CronJobs.reduceBmrMonthly();
+	// 	});
+
+	// 	console.log("✅ All cron jobs initialized (after 12:00 AM)");
+	// }
 
 	static testCron() {
 		console.log("Cron job executed");
@@ -89,12 +89,49 @@ class CronJobs {
 
 	static async deactivateExpiredTrials() {
 		try {
-			console.log("Starting trial user deactivation cron job...");
+			console.log("========== STARTING TRIAL DEACTIVATION CRON JOB ==========");
+			console.log(`Current server time: ${new Date().toString()}`);
+			console.log(`Current server time (ISO): ${new Date().toISOString()}`);
 
 			// Calculate cutoff date (3 days ago, start of day)
 			const threeDaysAgo = new Date();
 			threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 			threeDaysAgo.setHours(0, 0, 0, 0);
+
+			console.log("\n--- DATE CALCULATIONS ---");
+			console.log(`Three days ago (local): ${threeDaysAgo.toString()}`);
+			console.log(`Three days ago (ISO): ${threeDaysAgo.toISOString()}`);
+			console.log(`Three days ago (Date object):`, threeDaysAgo);
+
+			// For debugging: Check your specific user
+			const testUserActivatedAt = new Date("2026-01-18T13:30:46Z");
+			console.log("\n--- DEBUG: Checking your specific user (ID: 430) ---");
+			console.log(`User activatedAt: ${testUserActivatedAt.toString()}`);
+			console.log(`User activatedAt (ISO): ${testUserActivatedAt.toISOString()}`);
+			console.log(`Should user be included? ${testUserActivatedAt <= threeDaysAgo ? "YES" : "NO"}`);
+			console.log(
+				`Difference in days: ${Math.floor((threeDaysAgo - testUserActivatedAt) / (1000 * 60 * 60 * 24))} days`
+			);
+
+			console.log("\n--- EXECUTING QUERY ---");
+			console.log("Query conditions:");
+			console.log("1. activatedAt <= ", threeDaysAgo.toISOString());
+			console.log("2. isActive = 'Y'");
+			console.log("3. isdeleted = 'N'");
+			console.log("4. roleId = 2");
+			console.log("5. id NOT IN (SELECT DISTINCT userId FROM userPlans)");
+
+			// First, let's check if the user has any plans
+			console.log("\n--- CHECKING USER PLANS FOR USER ID: 430 ---");
+			try {
+				const userPlanCheck = await db.sequelize.query(
+					`SELECT COUNT(*) as planCount FROM userPlans WHERE userId = 430`,
+					{ type: db.sequelize.QueryTypes.SELECT }
+				);
+				console.log(`User 430 has ${userPlanCheck[0].planCount} user plans`);
+			} catch (planError) {
+				console.log("Error checking user plans:", planError.message);
+			}
 
 			const expiredTrialUsers = await User.findAll({
 				where: {
@@ -108,32 +145,92 @@ class CronJobs {
 					id: {
 						[db.Sequelize.Op.notIn]: db.Sequelize.literal(`(SELECT DISTINCT userId FROM userPlans)`)
 					}
+				},
+				// Add logging to see raw SQL
+				logging: (sql) => {
+					console.log("\n--- RAW SQL QUERY ---");
+					console.log(sql);
+					console.log("--- END RAW SQL ---\n");
 				}
 			});
 
+			console.log(`\n--- QUERY RESULTS ---`);
 			console.log(`Found ${expiredTrialUsers.length} trial users eligible for deactivation`);
 
-			if (!expiredTrialUsers.length) return;
+			if (expiredTrialUsers.length > 0) {
+				console.log("\n--- LIST OF EXPIRED USERS ---");
+				expiredTrialUsers.forEach((user, index) => {
+					console.log(`[${index + 1}] ID: ${user.id}, Email: ${user.email}, Activated: ${user.activatedAt}`);
+				});
+			} else {
+				console.log("No users found. Possible issues:");
+				console.log("1. Date calculation problem");
+				console.log("2. Users might have user plans");
+				console.log("3. Users not active or deleted");
+				console.log("4. Wrong roleId");
 
-			for (const user of expiredTrialUsers) {
-				await user.update({
-					isActive: "N"
+				// Let's check what users DO match some conditions
+				console.log("\n--- CHECKING PARTIAL MATCHES ---");
+
+				// Check users matching date condition only
+				const dateMatchUsers = await User.findAll({
+					where: {
+						activatedAt: {
+							[db.Sequelize.Op.lte]: threeDaysAgo
+						},
+						roleId: 2
+					},
+					attributes: ["id", "email", "activatedAt", "isActive", "isdeleted"],
+					limit: 5
 				});
 
-				// OPTIONAL: notification
-				await Notifications.sendFcmNotification(
-					user.id,
-					"Trial Period Ended",
-					"Your 3-day free trial has ended. Upgrade to continue.",
-					"trial_expired"
-				);
-
-				console.log(`Deactivated trial user: ${user.email}`);
+				console.log(`Users matching date condition (sample of ${dateMatchUsers.length}):`);
+				dateMatchUsers.forEach((user) => {
+					console.log(
+						`ID: ${user.id}, Email: ${user.email}, Active: ${user.isActive}, Deleted: ${user.isdeleted}, Activated: ${user.activatedAt}`
+					);
+				});
 			}
 
-			console.log(`Successfully deactivated ${expiredTrialUsers.length} trial users`);
+			if (!expiredTrialUsers.length) {
+				console.log("\nNo users to deactivate. Ending job.");
+				return;
+			}
+
+			console.log("\n--- PROCESSING DEACTIVATIONS ---");
+			for (const user of expiredTrialUsers) {
+				console.log(`Processing user ${user.id} (${user.email})...`);
+
+				// await user.update({
+				//     isActive: "N"
+				// });
+
+				// OPTIONAL: notification
+				try {
+					// await Notifications.sendFcmNotification(
+					//     user.id,
+					//     "Trial Period Ended",
+					//     "Your 3-day free trial has ended. Upgrade to continue.",
+					//     "trial_expired"
+					// );
+					console.log(`  ✓ Sent notification to user ${user.id}`);
+				} catch (notifError) {
+					console.log(`  ✗ Failed to send notification to user ${user.id}:`, notifError.message);
+				}
+
+				console.log(`  ✓ Deactivated trial user: ${user.email}`);
+			}
+
+			console.log(`\n========== SUCCESS: Deactivated ${expiredTrialUsers.length} trial users ==========`);
 		} catch (error) {
-			console.error("Error in trial user deactivation cron job:", error);
+			console.error("\n❌ ERROR in trial user deactivation cron job:");
+			console.error("Error message:", error.message);
+			console.error("Error stack:", error.stack);
+
+			// Log additional error details for Sequelize errors
+			if (error.name === "SequelizeDatabaseError") {
+				console.error("SQL Error details:", error.parent?.message);
+			}
 		}
 	}
 
