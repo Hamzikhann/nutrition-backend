@@ -101,7 +101,6 @@ class CronJobs {
 			console.log("\n--- DATE CALCULATIONS ---");
 			console.log(`Three days ago (local): ${threeDaysAgo.toString()}`);
 			console.log(`Three days ago (ISO): ${threeDaysAgo.toISOString()}`);
-			console.log(`Three days ago (Date object):`, threeDaysAgo);
 
 			// For debugging: Check your specific user
 			const testUserActivatedAt = new Date("2026-01-18T13:30:46Z");
@@ -113,25 +112,162 @@ class CronJobs {
 				`Difference in days: ${Math.floor((threeDaysAgo - testUserActivatedAt) / (1000 * 60 * 60 * 24))} days`
 			);
 
-			console.log("\n--- EXECUTING QUERY ---");
+			// 1. FIRST CHECK: SPECIFIC USER 430
+			console.log("\n--- SPECIFIC CHECK FOR USER 430 ---");
+			const specificUser = await User.findOne({
+				where: {
+					id: 430,
+					isActive: "Y",
+					isdeleted: "N",
+					roleId: 2
+				}
+			});
+
+			if (specificUser) {
+				console.log(`✅ User 430 found in database:`);
+				console.log(`   - Email: ${specificUser.email}`);
+				console.log(`   - activatedAt: ${specificUser.activatedAt}`);
+				console.log(`   - activatedAt type: ${typeof specificUser.activatedAt}`);
+
+				// Check the date comparison manually
+				const userDate = new Date(specificUser.activatedAt);
+				console.log(`   - activatedAt as Date: ${userDate.toISOString()}`);
+				console.log(
+					`   - Comparison: ${userDate.toISOString()} <= ${threeDaysAgo.toISOString()} = ${userDate <= threeDaysAgo ? "✅ YES" : "❌ NO"}`
+				);
+
+				// Check all conditions
+				console.log(`   - isActive = 'Y': ${specificUser.isActive === "Y" ? "✅" : "❌"}`);
+				console.log(`   - isdeleted = 'N': ${specificUser.isdeleted === "N" ? "✅" : "❌"}`);
+				console.log(`   - roleId = 2: ${specificUser.roleId === 2 ? "✅" : "❌"}`);
+			} else {
+				console.log("❌ User 430 NOT FOUND or doesn't match basic conditions!");
+			}
+
+			// 2. CHECK USER PLANS SUBQUERY
+			console.log("\n--- CHECKING USER PLANS ---");
+
+			// Check specific user 430
+			const userPlanCheck430 = await db.sequelize.query(
+				`SELECT COUNT(*) as planCount FROM userPlans WHERE userId = 430`,
+				{ type: db.sequelize.QueryTypes.SELECT }
+			);
+			console.log(`User 430 has ${userPlanCheck430[0].planCount} user plans`);
+
+			// Check total users with plans
+			const allUsersWithPlans = await db.sequelize.query(`SELECT COUNT(DISTINCT userId) as count FROM userPlans`, {
+				type: db.sequelize.QueryTypes.SELECT
+			});
+			console.log(`Total users with plans: ${allUsersWithPlans[0].count}`);
+
+			// 3. STEP-BY-STEP DEBUGGING
+			console.log("\n--- STEP-BY-STEP DEBUGGING ---");
+
+			// Step 1: Check just date condition
+			const step1 = await User.findAll({
+				where: {
+					activatedAt: {
+						[db.Sequelize.Op.lte]: threeDaysAgo
+					},
+					roleId: 2
+				},
+				attributes: ["id", "email", "activatedAt"],
+				limit: 10
+			});
+			console.log(`Step 1 (date + role): ${step1.length} users`);
+			console.log(`   Includes user 430? ${step1.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`);
+
+			// Step 2: Add isActive and isdeleted
+			const step2 = await User.findAll({
+				where: {
+					activatedAt: {
+						[db.Sequelize.Op.lte]: threeDaysAgo
+					},
+					roleId: 2,
+					isActive: "Y",
+					isdeleted: "N"
+				},
+				attributes: ["id", "email", "activatedAt", "isActive", "isdeleted"],
+				limit: 10
+			});
+			console.log(`Step 2 (+active/not deleted): ${step2.length} users`);
+			console.log(`   Includes user 430? ${step2.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`);
+
+			// Step 3: Check all users matching conditions (without plan check)
+			const step3 = await User.findAll({
+				where: {
+					activatedAt: {
+						[db.Sequelize.Op.lte]: threeDaysAgo
+					},
+					roleId: 2,
+					isActive: "Y",
+					isdeleted: "N"
+				},
+				attributes: ["id", "email", "activatedAt"]
+			});
+			console.log(`Step 3 (all matching users without plan check): ${step3.length} users`);
+			console.log(`   Includes user 430? ${step3.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`);
+
+			// Check specifically if user 430 is in step3
+			if (step3.some((u) => u.id === 430)) {
+				const user430 = step3.find((u) => u.id === 430);
+				console.log(`   User 430 details from query:`, user430.toJSON());
+			}
+
+			// 4. TRY ALTERNATIVE QUERY APPROACH
+			console.log("\n--- TESTING ALTERNATIVE QUERY ---");
+
+			// Method A: Raw query approach
+			const rawQuery = `
+            SELECT u.id, u.email, u.activatedAt, u.isActive, u.isdeleted, u.roleId
+            FROM users u
+            LEFT JOIN userPlans up ON u.id = up.userId
+            WHERE u.activatedAt <= '${threeDaysAgo.toISOString().slice(0, 19).replace("T", " ")}'
+              AND u.isActive = 'Y'
+              AND u.isdeleted = 'N'
+              AND u.roleId = 2
+              AND up.userId IS NULL
+            LIMIT 20
+        `;
+
+			const rawResults = await db.sequelize.query(rawQuery, {
+				type: db.sequelize.QueryTypes.SELECT
+			});
+			console.log(`Raw LEFT JOIN query found: ${rawResults.length} users`);
+			console.log(`   Includes user 430? ${rawResults.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`);
+
+			if (rawResults.some((u) => u.id === 430)) {
+				console.log("   ✅ User 430 found with LEFT JOIN approach!");
+			}
+
+			// Method B: Using NOT EXISTS instead of NOT IN
+			const notExistsQuery = `
+            SELECT u.id, u.email, u.activatedAt
+            FROM users u
+            WHERE u.activatedAt <= '${threeDaysAgo.toISOString().slice(0, 19).replace("T", " ")}'
+              AND u.isActive = 'Y'
+              AND u.isdeleted = 'N'
+              AND u.roleId = 2
+              AND NOT EXISTS (
+                  SELECT 1 FROM userPlans up WHERE up.userId = u.id
+              )
+            LIMIT 20
+        `;
+
+			const notExistsResults = await db.sequelize.query(notExistsQuery, {
+				type: db.sequelize.QueryTypes.SELECT
+			});
+			console.log(`NOT EXISTS query found: ${notExistsResults.length} users`);
+			console.log(`   Includes user 430? ${notExistsResults.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`);
+
+			// 5. ORIGINAL QUERY WITH EXTENDED LOGGING
+			console.log("\n--- EXECUTING ORIGINAL QUERY WITH DETAILED LOGS ---");
 			console.log("Query conditions:");
 			console.log("1. activatedAt <= ", threeDaysAgo.toISOString());
 			console.log("2. isActive = 'Y'");
 			console.log("3. isdeleted = 'N'");
 			console.log("4. roleId = 2");
 			console.log("5. id NOT IN (SELECT DISTINCT userId FROM userPlans)");
-
-			// First, let's check if the user has any plans
-			console.log("\n--- CHECKING USER PLANS FOR USER ID: 430 ---");
-			try {
-				const userPlanCheck = await db.sequelize.query(
-					`SELECT COUNT(*) as planCount FROM userPlans WHERE userId = 430`,
-					{ type: db.sequelize.QueryTypes.SELECT }
-				);
-				console.log(`User 430 has ${userPlanCheck[0].planCount} user plans`);
-			} catch (planError) {
-				console.log("Error checking user plans:", planError.message);
-			}
 
 			const expiredTrialUsers = await User.findAll({
 				where: {
@@ -141,62 +277,94 @@ class CronJobs {
 					isActive: "Y",
 					isdeleted: "N",
 					roleId: 2,
-					// 🔑 CRITICAL FIX: users with NO plans
 					id: {
 						[db.Sequelize.Op.notIn]: db.Sequelize.literal(`(SELECT DISTINCT userId FROM userPlans)`)
 					}
 				},
-				// Add logging to see raw SQL
 				logging: (sql) => {
-					console.log("\n--- RAW SQL QUERY ---");
+					console.log("\n--- ORIGINAL QUERY SQL ---");
 					console.log(sql);
-					console.log("--- END RAW SQL ---\n");
+					console.log("--- END ORIGINAL QUERY ---\n");
 				}
 			});
 
-			console.log(`\n--- QUERY RESULTS ---`);
-			console.log(`Found ${expiredTrialUsers.length} trial users eligible for deactivation`);
+			console.log(`\n--- FINAL RESULTS ---`);
+			console.log(`Original query found: ${expiredTrialUsers.length} trial users`);
 
 			if (expiredTrialUsers.length > 0) {
-				console.log("\n--- LIST OF EXPIRED USERS ---");
-				expiredTrialUsers.forEach((user, index) => {
+				console.log("\nList of users found:");
+				expiredTrialUsers.slice(0, 10).forEach((user, index) => {
 					console.log(`[${index + 1}] ID: ${user.id}, Email: ${user.email}, Activated: ${user.activatedAt}`);
 				});
+				if (expiredTrialUsers.length > 10) {
+					console.log(`... and ${expiredTrialUsers.length - 10} more`);
+				}
 			} else {
-				console.log("No users found. Possible issues:");
-				console.log("1. Date calculation problem");
-				console.log("2. Users might have user plans");
-				console.log("3. Users not active or deleted");
-				console.log("4. Wrong roleId");
+				console.log("\n❌ NO USERS FOUND with original query!");
+				console.log("\nPossible issues identified:");
 
-				// Let's check what users DO match some conditions
-				console.log("\n--- CHECKING PARTIAL MATCHES ---");
+				// Create summary
+				console.log("SUMMARY:");
+				console.log(`1. User 430 exists and matches conditions: ${specificUser ? "✅ YES" : "❌ NO"}`);
+				console.log(`2. User 430 has no plans: ${userPlanCheck430[0].planCount === 0 ? "✅ YES" : "❌ NO"}`);
+				console.log(`3. User 430 passes date check: ${testUserActivatedAt <= threeDaysAgo ? "✅ YES" : "❌ NO"}`);
+				console.log(
+					`4. Step 3 (without plan check) includes user 430: ${step3.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`
+				);
+				console.log(
+					`5. Raw LEFT JOIN query includes user 430: ${rawResults.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`
+				);
+				console.log(
+					`6. NOT EXISTS query includes user 430: ${notExistsResults.some((u) => u.id === 430) ? "✅ YES" : "❌ NO"}`
+				);
 
-				// Check users matching date condition only
-				const dateMatchUsers = await User.findAll({
-					where: {
-						activatedAt: {
-							[db.Sequelize.Op.lte]: threeDaysAgo
-						},
-						roleId: 2
-					},
-					attributes: ["id", "email", "activatedAt", "isActive", "isdeleted"],
-					limit: 5
-				});
-
-				console.log(`Users matching date condition (sample of ${dateMatchUsers.length}):`);
-				dateMatchUsers.forEach((user) => {
-					console.log(
-						`ID: ${user.id}, Email: ${user.email}, Active: ${user.isActive}, Deleted: ${user.isdeleted}, Activated: ${user.activatedAt}`
-					);
-				});
+				if (rawResults.some((u) => u.id === 430) && !expiredTrialUsers.some((u) => u.id === 430)) {
+					console.log("\n🚨 DISCOVERY: Raw query finds user 430 but Sequelize query doesn't!");
+					console.log("This suggests a Sequelize issue with the NOT IN subquery.");
+				}
 			}
 
 			if (!expiredTrialUsers.length) {
-				console.log("\nNo users to deactivate. Ending job.");
+				console.log("\n⚠️ No users to deactivate with original query.");
+
+				// If raw query found users, use those instead
+				if (rawResults.length > 0) {
+					console.log(`\n🔧 Using raw query results instead (found ${rawResults.length} users)...`);
+
+					for (const userData of rawResults) {
+						const user = await User.findByPk(userData.id);
+						if (user) {
+							console.log(`Processing user ${user.id} (${user.email})...`);
+
+							// await user.update({
+							//     isActive: "N"
+							// });
+
+							try {
+								// await Notifications.sendFcmNotification(
+								//     user.id,
+								//     "Trial Period Ended",
+								//     "Your 3-day free trial has ended. Upgrade to continue.",
+								//     "trial_expired"
+								// );
+								console.log(`  ✓ Sent notification to user ${user.id}`);
+							} catch (notifError) {
+								console.log(`  ✗ Failed to send notification: ${notifError.message}`);
+							}
+
+							console.log(`  ✓ Deactivated trial user: ${user.email}`);
+						}
+					}
+
+					console.log(`\n✅ Successfully processed ${rawResults.length} users using raw query`);
+					return;
+				}
+
+				console.log("Ending job.");
 				return;
 			}
 
+			// PROCESS DEACTIVATIONS
 			console.log("\n--- PROCESSING DEACTIVATIONS ---");
 			for (const user of expiredTrialUsers) {
 				console.log(`Processing user ${user.id} (${user.email})...`);
@@ -205,7 +373,6 @@ class CronJobs {
 				//     isActive: "N"
 				// });
 
-				// OPTIONAL: notification
 				try {
 					// await Notifications.sendFcmNotification(
 					//     user.id,
@@ -215,19 +382,18 @@ class CronJobs {
 					// );
 					console.log(`  ✓ Sent notification to user ${user.id}`);
 				} catch (notifError) {
-					console.log(`  ✗ Failed to send notification to user ${user.id}:`, notifError.message);
+					console.log(`  ✗ Failed to send notification: ${notifError.message}`);
 				}
 
 				console.log(`  ✓ Deactivated trial user: ${user.email}`);
 			}
 
-			console.log(`\n========== SUCCESS: Deactivated ${expiredTrialUsers.length} trial users ==========`);
+			console.log(`\n========== COMPLETED: Processed ${expiredTrialUsers.length} trial users ==========`);
 		} catch (error) {
 			console.error("\n❌ ERROR in trial user deactivation cron job:");
 			console.error("Error message:", error.message);
 			console.error("Error stack:", error.stack);
 
-			// Log additional error details for Sequelize errors
 			if (error.name === "SequelizeDatabaseError") {
 				console.error("SQL Error details:", error.parent?.message);
 			}
