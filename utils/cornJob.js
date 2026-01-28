@@ -8,51 +8,51 @@ const Plan = db.plans;
 const Role = db.roles;
 
 class CronJobs {
-	static init() {
-		//testCron();
-		// Cron Jobs
-		cron.schedule("*/10 * * * * *", CronJobs.testCron);
-
-		// Trial User Deactivation - Every 30 seconds
-		// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
-		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
-
-		// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
-		// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
-		cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
-
-		// BMR Reduction - Run daily at 12:15 AM (after midnight)
-		// cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
-
-		console.log("All cron jobs initialized");
-	}
-
 	// static init() {
-	// 	console.log("🕐 Initializing cron jobs...");
+	// 	//testCron();
+	// 	// Cron Jobs
+	// 	cron.schedule("*/10 * * * * *", CronJobs.testCron);
 
-	// 	// 🟢 Trial User Deactivation
-	// 	// Runs DAILY at 12:05 AM
-	// 	cron.schedule("5 0 * * *", async () => {
-	// 		console.log("⏰ Trial deactivation cron triggered");
-	// 		await CronJobs.deactivateExpiredTrials();
-	// 	});
+	// 	// Trial User Deactivation - Every 30 seconds
+	// 	// cron.schedule("5 0 * * *", CronJobs.deactivateExpiredTrials);
+	// 	cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredTrials);
 
-	// 	// 🟢 Plan User Deactivation
-	// 	// Runs DAILY at 12:10 AM
-	// 	cron.schedule("10 0 * * *", async () => {
-	// 		console.log("⏰ Plan deactivation cron triggered");
-	// 		await CronJobs.deactivateExpiredPlans();
-	// 	});
+	// 	// Plan User Deactivation - Run daily at 12:10 AM (after midnight)
+	// 	// cron.schedule("10 0 * * *", CronJobs.deactivateExpiredPlans);
+	// 	cron.schedule("*/10 * * * * *", CronJobs.deactivateExpiredPlans);
 
-	// 	// 🟢 BMR Monthly Reduction
-	// 	// Runs DAILY at 12:15 AM
-	// 	cron.schedule("15 0 * * *", async () => {
-	// 		console.log("⏰ BMR reduction cron triggered");
-	// 		await CronJobs.reduceBmrMonthly();
-	// 	});
+	// 	// BMR Reduction - Run daily at 12:15 AM (after midnight)
+	// 	// cron.schedule("15 0 * * *", CronJobs.reduceBmrMonthly);
 
-	// 	console.log("✅ All cron jobs initialized (after 12:00 AM)");
+	// 	console.log("All cron jobs initialized");
 	// }
+
+	static init() {
+		console.log("🕐 Initializing cron jobs...");
+
+		// 🟢 Trial User Deactivation
+		// Runs DAILY at 12:05 AM
+		cron.schedule("5 0 * * *", async () => {
+			console.log("⏰ Trial deactivation cron triggered");
+			await CronJobs.deactivateExpiredTrials();
+		});
+
+		// 🟢 Plan User Deactivation
+		// Runs DAILY at 12:10 AM
+		cron.schedule("10 0 * * *", async () => {
+			console.log("⏰ Plan deactivation cron triggered");
+			await CronJobs.deactivateExpiredPlans();
+		});
+
+		// 🟢 BMR Monthly Reduction
+		// Runs DAILY at 12:15 AM
+		cron.schedule("15 0 * * *", async () => {
+			console.log("⏰ BMR reduction cron triggered");
+			await CronJobs.reduceBmrMonthly();
+		});
+
+		console.log("✅ All cron jobs initialized (after 12:00 AM)");
+	}
 
 	static testCron() {
 		console.log("Cron job executed");
@@ -127,18 +127,18 @@ class CronJobs {
 				console.log(`Processing user ${user.id} (${user.email})...`);
 
 				// Deactivate the user
-				// await user.update({
-				//     isActive: "N"
-				// });
+				await user.update({
+					isActive: "N"
+				});
 
 				// Send notification
 				try {
-					// await Notifications.sendFcmNotification(
-					//     user.id,
-					//     "Trial Period Ended",
-					//     "Your 3-day free trial has ended. Upgrade to continue.",
-					//     "trial_expired"
-					// );
+					await Notifications.sendFcmNotification(
+						user.id,
+						"Trial Period Ended",
+						"Your 3-day free trial has ended. Upgrade to continue.",
+						"trial_expired"
+					);
 					console.log(`  ✓ Sent notification to user ${user.id}`);
 				} catch (notifError) {
 					console.log(`  ✗ Failed to send notification: ${notifError.message}`);
